@@ -53,18 +53,18 @@ Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
+# LISTA LINGUE SEMPLIFICATA
 LINGUE = [
-    "Italiano", "Francese", "Inglese (UK)", 
-    "Inglese (neutro, per interlocutori internazionali)", "Spagnolo", 
+    "Italiano", "Francese", "Inglese", "Spagnolo", 
     "Tedesco", "Olandese", "Rumeno", "Russo", 
     "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# Gestione della Memoria (Session State)
+# Gestione della Memoria (Session State) - Aggiornata con la nuova voce "Inglese"
 if "lang_source" not in st.session_state:
     st.session_state.lang_source = "Italiano"
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Inglese (neutro, per interlocutori internazionali)"
+    st.session_state.lang_target = "Inglese"
 
 def inverti_lingue():
     st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
