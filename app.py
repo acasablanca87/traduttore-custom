@@ -46,43 +46,44 @@ Struttura: Se il testo originale è complesso, organizza l'output per punti se q
 🛡️ Vincoli Stilistici e Guardrails (B2B Edition):
 Niente "Gergo da Strada": Elimina espressioni colloquiali o troppo informali utilizzate tra conducenti.
 Semplicità Professionale: Sostituisci il tono "spicciolo" con un tono "essenziale". Usa verbi d'azione chiari (es. "Confermare", "Autorizzare", "Notificare").
-Precisione Tecnica: Se noti ambiguità nel testo originale, applica internamente la Chain of Verification (CoV): verifica che il termine logistico scelto sia lo standard nel B2B prima di produrre l'output.
+Precisione Tecnica: Se noti ambiguità nel testo originale, applica internamente la Chain of Verification (CoV): verifica che il termine logistico scelto sia lo standard nel B2B prima di produce l'output.
 
 🔍 Protocollo di Validazione (Truth Detector):
 Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
-# LISTA LINGUE SEMPLIFICATA
 LINGUE = [
     "Italiano", "Francese", "Inglese", "Spagnolo", 
     "Tedesco", "Olandese", "Rumeno", "Russo", 
     "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# Gestione della Memoria (Session State) - Aggiornata con la nuova voce "Inglese"
+# Gestione della Memoria (Session State)
 if "lang_source" not in st.session_state:
     st.session_state.lang_source = "Italiano"
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Inglese"
+    st.session_state.lang_target = "Francese" # Modificato in Francese di default
 
 def inverti_lingue():
     st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
 
 # 4. Interfaccia Utente
 st.markdown("### ⚙️ Impostazioni Traduzione")
+
+# Modificato l'ordine per avere B2B a sinistra (che diventa il default) e FIELD a destra
 contesto_selezionato = st.radio(
     "Modalità:",
-    ("FIELD (Autisti e Magazzino)", "B2B (Uffici, Broker e Clienti)"),
+    ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
     horizontal=True
 )
 
 st.divider()
 
-if "FIELD" in contesto_selezionato:
-    prompt_attivo = PROMPT_FIELD
-else:
+if "B2B" in contesto_selezionato:
     prompt_attivo = PROMPT_B2B
+else:
+    prompt_attivo = PROMPT_FIELD
 
 # Layout Lingue
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
@@ -123,7 +124,7 @@ if btn_traduci:
                 response = model.generate_content(prompt_completo)
                 
                 with risultato_container:
-                    # Abbiamo aggiunto wrap_lines=True per mandare a capo il testo automaticamente!
+                    # Stampa il risultato con ritorno a capo automatico e tasto copia
                     st.code(response.text, language=None, wrap_lines=True)
                     
             except Exception as e:
