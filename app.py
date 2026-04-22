@@ -10,7 +10,7 @@ st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Tradu
 # 2. Configurazione API
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
+# IL MODELLO NON È PIÙ FISSO QUI, LO SCEGLIAMO DOPO
 
 # 3. Definizione dei Prompts di Contesto
 PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
@@ -63,7 +63,7 @@ LINGUE = [
 if "lang_source" not in st.session_state:
     st.session_state.lang_source = "Italiano"
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Francese" # Modificato in Francese di default
+    st.session_state.lang_target = "Francese"
 
 def inverti_lingue():
     st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
@@ -71,7 +71,22 @@ def inverti_lingue():
 # 4. Interfaccia Utente
 st.markdown("### ⚙️ Impostazioni Traduzione")
 
-# Modificato l'ordine per avere B2B a sinistra (che diventa il default) e FIELD a destra
+# SELETTORE DEL MODELLO (Nuova funzione)
+scelta_modello = st.radio(
+    "Motore di Intelligenza:",
+    ("⚡ Veloce (Flash Lite - Rapido ed economico)", "🧠 Ragionamento (Pro - Più lento ma precisissimo)"),
+    horizontal=True
+)
+
+# Definiamo quale modello API usare in base alla scelta dell'utente
+if "Veloce" in scelta_modello:
+    modello_api_scelto = "gemini-3.1-flash-lite-preview"
+else:
+    modello_api_scelto = "gemini-3.1-pro-preview"
+
+st.divider()
+
+# SELETTORE DEL CONTESTO
 contesto_selezionato = st.radio(
     "Modalità:",
     ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
@@ -112,7 +127,11 @@ with col_testo_dx:
 # 5. Logica di Traduzione
 if btn_traduci:
     if testo_da_tradurre.strip():
-        with st.spinner("Traduzione in corso..."):
+        # Lo spinner mostrerà quale modello sta lavorando
+        with st.spinner(f"Traduzione in corso ({modello_api_scelto})..."):
+            
+            # INIZIALIZZAZIONE DEL MODELLO SCELTO
+            model = genai.GenerativeModel(modello_api_scelto)
             
             lingua_origine = st.session_state.lang_source
             lingua_destinazione = st.session_state.lang_target
