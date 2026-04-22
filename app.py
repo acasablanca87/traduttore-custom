@@ -53,22 +53,23 @@ Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
-# Array delle lingue disponibili
 LINGUE = [
-    "Italiano",
-    "Francese (sfumature Francia)",
-    "Francese (sfumature Belgio)",
-    "Inglese (britannico per UK)",
-    "Inglese (neutro per interlocutori internazionali)",
-    "Spagnolo",
-    "Tedesco",
-    "Olandese",
-    "Rumeno",
-    "Russo",
-    "Bielorusso",
-    "Ucraino",
-    "Polacco"
+    "Italiano", "Francese (sfumature Francia)", "Francese (sfumature Belgio)",
+    "Inglese (britannico per UK)", "Inglese (neutro per interlocutori internazionali)",
+    "Spagnolo", "Tedesco", "Olandese", "Rumeno", "Russo", "Bielorusso", "Ucraino", "Polacco"
 ]
+
+# --- NOVITÀ: Gestione della "Memoria" (Session State) ---
+# Diamo all'app una memoria iniziale per le lingue
+if "lang_source" not in st.session_state:
+    st.session_state.lang_source = "Italiano"
+if "lang_target" not in st.session_state:
+    st.session_state.lang_target = "Inglese (neutro per interlocutori internazionali)"
+
+# Funzione per invertire le lingue
+def inverti_lingue():
+    # Scambia i valori salvati nella memoria
+    st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
 
 # 4. Interfaccia Utente
 st.markdown("### ⚙️ Impostazioni Traduzione")
@@ -85,22 +86,30 @@ if "FIELD" in contesto_selezionato:
 else:
     prompt_attivo = PROMPT_B2B
 
-# Colonne per le lingue e i testi
-col1, col2 = st.columns(2)
+# --- Layout Lingue (3 Colonne) ---
+col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
-with col1:
-    # Menu a tendina per la lingua di origine (Default: Italiano, indice 0)
-    lingua_origine = st.selectbox("Traduci da:", LINGUE, index=0)
+with col_lang_sx:
+    # Usiamo "key" per collegare il menu alla memoria dell'app
+    st.selectbox("Traduci da:", LINGUE, key="lang_source")
     
+with col_btn_inv:
+    # Aggiungiamo uno spazio vuoto per allineare il bottone ai menu a tendina
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    st.button("⇄ Inverti", on_click=inverti_lingue, use_container_width=True)
+    
+with col_lang_dx:
+    st.selectbox("Traduci a:", LINGUE, key="lang_target")
+
+# --- Layout Testi (2 Colonne) ---
+col_testo_sx, col_testo_dx = st.columns(2)
+
+with col_testo_sx:
     testo_da_tradurre = st.text_area("Testo Originale:", height=250, label_visibility="collapsed", placeholder="Incolla qui il testo da tradurre...")
-    
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
-with col2:
-    # Menu a tendina per la lingua di destinazione (Default: Inglese neutro, indice 4)
-    lingua_destinazione = st.selectbox("Traduci a:", LINGUE, index=4)
-    
-    # Contenitore per il risultato
+with col_testo_dx:
+    # Riquadro con bordo per ospitare il testo tradotto
     risultato_container = st.container(border=True)
     
 # 5. Logica di Traduzione
@@ -108,9 +117,11 @@ if btn_traduci:
     if testo_da_tradurre.strip():
         with st.spinner("Traduzione in corso..."):
             
-            # Qui costruiamo il trigger automatico che il modello si aspetta!
-            comando_invisibile = f"Traduci in {lingua_destinazione} (dal {lingua_origine}):\n\n{testo_da_tradurre}"
+            # Recuperiamo le lingue direttamente dalla memoria aggiornata
+            lingua_origine = st.session_state.lang_source
+            lingua_destinazione = st.session_state.lang_target
             
+            comando_invisibile = f"Traduci in {lingua_destinazione} (dal {lingua_origine}):\n\n{testo_da_tradurre}"
             prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_invisibile}"
             
             try:
