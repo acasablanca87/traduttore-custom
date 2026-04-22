@@ -7,7 +7,7 @@ st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layou
 st.title("Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
-# 2. Configurazione API (Aggiornata al modello "Flash Lite" per la massima velocità!)
+# 2. Configurazione API
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
@@ -123,8 +123,8 @@ if btn_traduci:
                 response = model.generate_content(prompt_completo)
                 
                 with risultato_container:
-                    # Stampa il risultato in un box formattato con il pulsante Copia in alto a destra!
-                    st.code(response.text, language=None)
+                    # Abbiamo aggiunto wrap_lines=True per mandare a capo il testo automaticamente!
+                    st.code(response.text, language=None, wrap_lines=True)
                     
             except Exception as e:
                 st.error(f"Si è verificato un errore: {e}")
