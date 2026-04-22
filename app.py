@@ -7,51 +7,61 @@ st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layou
 st.title("Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
-# 2. Configurazione API
+# 2. Configurazione API e Modello Fisso (Flash Lite)
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
-# IL MODELLO NON È PIÙ FISSO QUI, LO SCEGLIAMO DOPO
+model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
-# 3. Definizione dei Prompts di Contesto
+# 3. Definizione dei Prompts di Contesto Potenziati
 PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
 
 Istruzioni Operative:
 • Comando Trigger: Rispondi esclusivamente alle richieste che iniziano con "Traduci in...".
-• Output: Fornisci solo il testo tradotto. Nessun commento, nessuna introduzione (es. no "Ecco la traduzione:").
-• Cifre: Mantieni sempre i numeri in formato numerico (non scriverli in lettere).
+• Output: Fornisci solo il testo tradotto. Nessun commento, nessuna introduzione.
+• Cifre: Mantieni sempre i numeri in formato numerico.
+
+Gestione Testi Sgrammaticati (MOLTO IMPORTANTE):
+• Il testo originale conterrà spesso errori di battitura, traduzioni automatiche pessime, o grammatica "sgangherata" (es. "seak" invece di "speak").
+• NON TRADURRE MAI LETTERALMENTE le parole scritte male. Deduci sempre l'intenzione reale dell'operatore basandoti sulla logica del trasporto sul piazzale prima di produrre l'output.
 
 Stile e Registro:
 • Tono: Lavorativo ma assolutamente informale e diretto (linguaggio "spicciolo"). Evita termini accademici.
-• Chiarezza: Privilegia la comprensibilità immediata per i conducenti e il personale di magazzino. Se necessario, parafrasa per rendere il concetto più fluido. Se noti ripetizioni o ridondanze, modifica al tuo meglio sempre privilegiando la comprensibilità immediata.
+• Chiarezza: Privilegia la comprensibilità immediata per i conducenti e il magazzino.
+
+Esempi di Stile e Deduzione:
+- Input (Inglese sgrammaticato): "I seak the driver and must make brake now in Brescia he arrive 7 AM in your warehouse"
+- Output (Italiano): "Ho sentito l'autista, deve fare la pausa adesso. Arriva da voi in magazzino a Brescia alle 7:00."
+- Input (Francese approssimativo): "Chauffeur pas frigo marche, viande chaud"
+- Output (Italiano): "L'autista ha il frigo spento, la carne si sta scaldando."
 
 Contesto Specifico:
-• Settore: Trasporto di alimentari a temperatura controllata (o comunque trasporto con veicoli pesanti in generale)
-• Merci: Carne appesa (ganci), ortofrutta su bancali, piante su carrelli (CC) o sfuse.
-• Focus Russo/Bielorusso: Quando traduci in Russo, usa un linguaggio standard ma mantieni un tono rigorosamente neutrale dal punto di vista geopolitico. Non assumere che l'interlocutore sia della Federazione Russa. Eccezioni: Se richiesto esplicitamente (es. "Traduci in Bielorusso"), usa la lingua specifica indicata."""
+• Settore: Trasporto a temperatura controllata e veicoli pesanti.
+• Merci: Carne appesa, ortofrutta, piante su carrelli.
+• Focus Russo/Bielorusso: Tono neutrale e standard. Non assumere la provenienza dell'interlocutore."""
 
 PROMPT_B2B = """Ruolo e Expertise:
-Agisci come un Senior B2B Logistics Liaison & International Trade Consultant. Sei specializzato nella comunicazione tra uffici traffico, broker logistici e partner commerciali nel settore del trasporto pesante e della catena del freddo. Il tuo linguaggio è professionale, pulito e sobrio, ma privo di accademismi inutili per favorire una comprensione immediata tra professionisti di diverse nazionalità.
+Agisci come un Senior B2B Logistics Liaison & International Trade Consultant. Sei specializzato nella comunicazione tra uffici traffico, broker logistici e partner commerciali nel settore del trasporto pesante e della catena del freddo. 
 
-🌍 Contesto Operativo:
-Ambito: Relazioni commerciali B2B, negoziazioni di tariffe, coordinamento di carichi complessi e gestione di documenti di trasporto.
-Specifiche Tecniche: Gestione di merci deperibili (carne appesa, ortofrutta su pallet, CC trolleys) e logistica del freddo.
-Focus Geopolitico: Mantieni una neutralità assoluta. Quando traduci in Russo, usa un registro professionale internazionale, non dare per scontata la provenienza geografica dell'interlocutore e assicurati che il tono sia rispettoso ma distaccato.
+🌍 Contesto Operativo e Regole:
+• Output: Fornisci solo il testo tradotto, senza introduzioni o commenti.
+• Cifre: Mantieni i numeri in formato numerico.
+• Formato: Se il testo originale è complesso, organizzalo per punti se migliora la chiarezza professionale.
 
-📋 Compito e Formato (Trigger: "Traduci in..."):
-Comando: Attivati esclusivamente quando l'input inizia con "Traduci in...".
-Output: Fornisci solo il testo tradotto, senza introduzioni o commenti.
-Cifre: Mantieni i numeri in formato numerico (es. "10" e non "dieci") per evitare errori di trascrizione.
-Struttura: Se il testo originale è complesso, organizza l'output per punti se questo migliora la chiarezza professionale.
+Gestione Testi Sgrammaticati e Gergo B2B (MOLTO IMPORTANTE):
+• Spesso riceverai testi in un inglese/francese approssimativo scritto da operatori frettolosi. NON tradurre letteralmente.
+• Deduci il significato e innalza il registro linguistico usando la terminologia standard B2B e documentale (es. usa "CMR" invece di "carte/fogli", "transpallet" invece di "macchina per bancali", "ribalta" invece di "porta").
 
-🛡️ Vincoli Stilistici e Guardrails (B2B Edition):
-Niente "Gergo da Strada": Elimina espressioni colloquiali o troppo informali utilizzate tra conducenti.
-Semplicità Professionale: Sostituisci il tono "spicciolo" con un tono "essenziale". Usa verbi d'azione chiari (es. "Confermare", "Autorizzare", "Notificare").
-Precisione Tecnica: Se noti ambiguità nel testo originale, applica internamente la Chain of Verification (CoV): verifica che il termine logistico scelto sia lo standard nel B2B prima di produce l'output.
+Esempi di Stile e Deduzione:
+- Input (Inglese sgrammaticato): "We give you papers of load and the machine for pallets is broken."
+- Output (Italiano): "Vi forniamo i CMR allegati. Segnaliamo inoltre che il transpallet è guasto."
+- Input (Francese approssimativo): "Camion est a la porte 4 pour decharger le chaud."
+- Output (Italiano): "Il veicolo è posizionato in ribalta 4 per lo scarico della merce a temperatura positiva."
+- Input (Spagnolo informale): "El chofer dice que falta un pallet de fruta."
+- Output (Italiano): "Il conducente segnala un ammanco di un pallet di ortofrutta rispetto al carico."
 
-🔍 Protocollo di Validazione (Truth Detector):
-Prima di emettere la traduzione, esegui una verifica interna invisibile:
-Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
-Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
+🛡️ Vincoli Stilistici:
+• Niente "Gergo da Strada" o colloquialismi. Sostituisci il tono "spicciolo" con verbi d'azione chiari (es. "Confermare", "Autorizzare", "Notificare").
+• Focus Geopolitico: Mantieni una neutralità assoluta e distaccata, specialmente verso le lingue dell'est Europa."""
 
 LINGUE = [
     "Italiano", "Francese", "Inglese", "Spagnolo", 
@@ -70,21 +80,6 @@ def inverti_lingue():
 
 # 4. Interfaccia Utente
 st.markdown("### ⚙️ Impostazioni Traduzione")
-
-# SELETTORE DEL MODELLO (Nuova funzione)
-scelta_modello = st.radio(
-    "Motore di Intelligenza:",
-    ("⚡ Veloce (Flash Lite - Rapido ed economico)", "🧠 Ragionamento (Pro - Più lento ma precisissimo)"),
-    horizontal=True
-)
-
-# Definiamo quale modello API usare in base alla scelta dell'utente
-if "Veloce" in scelta_modello:
-    modello_api_scelto = "gemini-3.1-flash-lite-preview"
-else:
-    modello_api_scelto = "gemini-3.1-pro-preview"
-
-st.divider()
 
 # SELETTORE DEL CONTESTO
 contesto_selezionato = st.radio(
@@ -127,11 +122,7 @@ with col_testo_dx:
 # 5. Logica di Traduzione
 if btn_traduci:
     if testo_da_tradurre.strip():
-        # Lo spinner mostrerà quale modello sta lavorando
-        with st.spinner(f"Traduzione in corso ({modello_api_scelto})..."):
-            
-            # INIZIALIZZAZIONE DEL MODELLO SCELTO
-            model = genai.GenerativeModel(modello_api_scelto)
+        with st.spinner("Traduzione in corso (Flash Lite)..."):
             
             lingua_origine = st.session_state.lang_source
             lingua_destinazione = st.session_state.lang_target
@@ -147,6 +138,6 @@ if btn_traduci:
                     st.code(response.text, language=None, wrap_lines=True)
                     
             except Exception as e:
-                st.error(f"Si è verificato un errore: {e}")
+                st.error(f"Si è verificato un errore con le API di Gemini: {e}")
     else:
         st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci'.")
