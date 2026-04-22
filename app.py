@@ -4,14 +4,13 @@ import google.generativeai as genai
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# TITOLO AGGIORNATO
 st.title("Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
-# 2. Configurazione API
+# 2. Configurazione API (Aggiornata al modello "Flash Lite" per la massima velocità!)
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-3.1-pro-preview')
+model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
 # 3. Definizione dei Prompts di Contesto
 PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
@@ -54,7 +53,6 @@ Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
-# LISTA LINGUE AGGIORNATA
 LINGUE = [
     "Italiano", "Francese", "Inglese (UK)", 
     "Inglese (neutro, per interlocutori internazionali)", "Spagnolo", 
@@ -107,7 +105,8 @@ with col_testo_sx:
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
-    risultato_container = st.container(border=True)
+    # Contenitore per il risultato
+    risultato_container = st.container()
     
 # 5. Logica di Traduzione
 if btn_traduci:
@@ -124,7 +123,8 @@ if btn_traduci:
                 response = model.generate_content(prompt_completo)
                 
                 with risultato_container:
-                    st.write(response.text)
+                    # Stampa il risultato in un box formattato con il pulsante Copia in alto a destra!
+                    st.code(response.text, language=None)
                     
             except Exception as e:
                 st.error(f"Si è verificato un errore: {e}")
