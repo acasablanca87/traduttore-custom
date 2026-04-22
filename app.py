@@ -2,9 +2,10 @@ import streamlit as st
 import google.generativeai as genai
 
 # 1. Configurazione della pagina
-st.set_page_config(page_title="Traduttore Logistico", page_icon="🚛", layout="wide")
+st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-st.title("🚛 Traduttore Logistico Custom")
+# TITOLO AGGIORNATO
+st.title("Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
 # 2. Configurazione API
@@ -53,22 +54,21 @@ Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
+# LISTA LINGUE AGGIORNATA
 LINGUE = [
-    "Italiano", "Francese (sfumature Francia)", "Francese (sfumature Belgio)",
-    "Inglese (britannico per UK)", "Inglese (neutro per interlocutori internazionali)",
-    "Spagnolo", "Tedesco", "Olandese", "Rumeno", "Russo", "Bielorusso", "Ucraino", "Polacco"
+    "Italiano", "Francese", "Inglese (UK)", 
+    "Inglese (neutro, per interlocutori internazionali)", "Spagnolo", 
+    "Tedesco", "Olandese", "Rumeno", "Russo", 
+    "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# --- NOVITÀ: Gestione della "Memoria" (Session State) ---
-# Diamo all'app una memoria iniziale per le lingue
+# Gestione della Memoria (Session State)
 if "lang_source" not in st.session_state:
     st.session_state.lang_source = "Italiano"
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Inglese (neutro per interlocutori internazionali)"
+    st.session_state.lang_target = "Inglese (neutro, per interlocutori internazionali)"
 
-# Funzione per invertire le lingue
 def inverti_lingue():
-    # Scambia i valori salvati nella memoria
     st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
 
 # 4. Interfaccia Utente
@@ -86,22 +86,20 @@ if "FIELD" in contesto_selezionato:
 else:
     prompt_attivo = PROMPT_B2B
 
-# --- Layout Lingue (3 Colonne) ---
+# Layout Lingue
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
-    # Usiamo "key" per collegare il menu alla memoria dell'app
     st.selectbox("Traduci da:", LINGUE, key="lang_source")
     
 with col_btn_inv:
-    # Aggiungiamo uno spazio vuoto per allineare il bottone ai menu a tendina
     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
     st.button("⇄ Inverti", on_click=inverti_lingue, use_container_width=True)
     
 with col_lang_dx:
     st.selectbox("Traduci a:", LINGUE, key="lang_target")
 
-# --- Layout Testi (2 Colonne) ---
+# Layout Testi
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
@@ -109,7 +107,6 @@ with col_testo_sx:
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
-    # Riquadro con bordo per ospitare il testo tradotto
     risultato_container = st.container(border=True)
     
 # 5. Logica di Traduzione
@@ -117,7 +114,6 @@ if btn_traduci:
     if testo_da_tradurre.strip():
         with st.spinner("Traduzione in corso..."):
             
-            # Recuperiamo le lingue direttamente dalla memoria aggiornata
             lingua_origine = st.session_state.lang_source
             lingua_destinazione = st.session_state.lang_target
             
