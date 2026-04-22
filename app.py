@@ -12,7 +12,7 @@ api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 
 # Inizializza il modello (gemini-1.5-flash è veloce e ottimo per testi)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-3.1-pro-preview')
 
 # Box per inserire il Contesto (le tue regole)
 contesto = st.text_area(
