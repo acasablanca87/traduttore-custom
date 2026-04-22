@@ -1,18 +1,18 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Configurazione della pagina (layout "wide" per avere i due riquadri affiancati)
+# 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico", page_icon="🚛", layout="wide")
 
 st.title("🚛 Traduttore Logistico Custom")
-st.markdown("Seleziona il contesto, inserisci il testo da tradurre (ricorda il comando *'Traduci in...'* se non l'hai già scritto) e avvia.")
+st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
-# 2. Configurazione API (modello 3.1 Pro Preview)
+# 2. Configurazione API
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-3.1-pro-preview')
 
-# 3. Definizione dei Prompts di Contesto "Dietro le quinte"
+# 3. Definizione dei Prompts di Contesto
 PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
 
 Istruzioni Operative:
@@ -53,9 +53,24 @@ Prima di emettere la traduzione, esegui una verifica interna invisibile:
 Metriche di Confidenza: Se un termine tecnico è ambiguo, seleziona la traduzione con confidenza >95%.
 Self-Correction: Assicurati che non siano rimaste ridondanze o termini troppo "coloriti" che potrebbero danneggiare la reputazione del brand in una conversazione B2B."""
 
-# 4. Interfaccia Utente
+# Array delle lingue disponibili
+LINGUE = [
+    "Italiano",
+    "Francese (sfumature Francia)",
+    "Francese (sfumature Belgio)",
+    "Inglese (britannico per UK)",
+    "Inglese (neutro per interlocutori internazionali)",
+    "Spagnolo",
+    "Tedesco",
+    "Olandese",
+    "Rumeno",
+    "Russo",
+    "Bielorusso",
+    "Ucraino",
+    "Polacco"
+]
 
-# Selettore Contesto
+# 4. Interfaccia Utente
 st.markdown("### ⚙️ Impostazioni Traduzione")
 contesto_selezionato = st.radio(
     "Modalità:",
@@ -63,44 +78,45 @@ contesto_selezionato = st.radio(
     horizontal=True
 )
 
-st.divider() # Linea di separazione orizzontale
+st.divider()
 
-# Assegnazione del prompt corretto in base alla scelta
 if "FIELD" in contesto_selezionato:
     prompt_attivo = PROMPT_FIELD
 else:
     prompt_attivo = PROMPT_B2B
 
-# Creazione delle due colonne affiancate
+# Colonne per le lingue e i testi
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("#### Testo Originale")
-    # Altezza fissa per sembrare un vero box di traduzione
-    testo_da_tradurre = st.text_area("Inserisci qui il testo:", height=300, label_visibility="collapsed")
+    # Menu a tendina per la lingua di origine (Default: Italiano, indice 0)
+    lingua_origine = st.selectbox("Traduci da:", LINGUE, index=0)
     
-    # Bottone largo quanto la colonna
+    testo_da_tradurre = st.text_area("Testo Originale:", height=250, label_visibility="collapsed", placeholder="Incolla qui il testo da tradurre...")
+    
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col2:
-    st.markdown("#### Testo Tradotto")
-    # Creiamo un contenitore visivo con un bordo per simulare la casella di output
+    # Menu a tendina per la lingua di destinazione (Default: Inglese neutro, indice 4)
+    lingua_destinazione = st.selectbox("Traduci a:", LINGUE, index=4)
+    
+    # Contenitore per il risultato
     risultato_container = st.container(border=True)
     
 # 5. Logica di Traduzione
 if btn_traduci:
     if testo_da_tradurre.strip():
-        with st.spinner("Elaborazione in corso..."):
+        with st.spinner("Traduzione in corso..."):
             
-            # Ricordiamo al modello di restituire SOLO la traduzione come richiesto dai tuoi prompt
-            prompt_completo = f"{prompt_attivo}\n\nTesto:\n{testo_da_tradurre}"
+            # Qui costruiamo il trigger automatico che il modello si aspetta!
+            comando_invisibile = f"Traduci in {lingua_destinazione} (dal {lingua_origine}):\n\n{testo_da_tradurre}"
+            
+            prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_invisibile}"
             
             try:
                 response = model.generate_content(prompt_completo)
                 
-                # Inseriamo il risultato nel riquadro di destra (col2)
                 with risultato_container:
-                    # Usiamo st.write per stampare il testo formattato in modo pulito
                     st.write(response.text)
                     
             except Exception as e:
