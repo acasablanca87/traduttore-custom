@@ -4,7 +4,17 @@ import google.generativeai as genai
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-st.title("Traduttore AI settore Logistica 🚛")
+# Iniezione CSS per ridurre lo spazio vuoto in alto
+st.markdown("""
+    <style>
+        .block-container {
+            padding-top: 2rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Titolo più piccolo (usa h2 invece del titolo principale di Streamlit)
+st.markdown("## Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
 
 # 2. Configurazione API e Modello Fisso (Flash Lite)
@@ -79,7 +89,9 @@ def inverti_lingue():
     st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
 
 # 4. Interfaccia Utente
-st.markdown("### ⚙️ Impostazioni Traduzione")
+
+# Testo normale in grassetto: stessa grandezza dei radio button
+st.markdown("**⚙️ Impostazioni Traduzione**")
 
 # SELETTORE DEL CONTESTO
 contesto_selezionato = st.radio(
@@ -88,7 +100,8 @@ contesto_selezionato = st.radio(
     horizontal=True
 )
 
-st.divider()
+# Linea di divisione con margini personalizzati ridotti
+st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
 if "B2B" in contesto_selezionato:
     prompt_attivo = PROMPT_B2B
