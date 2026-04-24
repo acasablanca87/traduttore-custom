@@ -111,7 +111,6 @@ def ping_pong_lingue():
 def nuova_chat():
     st.session_state.storia_contesto = ""
     st.session_state.testo_tradotto = ""
-    # Questo counter fa resettare tutte le caselle (testo e immagine)
     st.session_state.input_key_counter += 1
 
 # 4. Interfaccia Utente
@@ -147,7 +146,7 @@ with st.expander("📜 Cronologia, Contesto & Immagini (Opzionale)", expanded=Fa
     
     st.markdown("---")
     
-    # Caricatore Immagini Drag & Drop (si resetta da solo grazie alla key dinamica)
+    # Caricatore Immagini Drag & Drop
     immagine_caricata = st.file_uploader(
         "📎 Allega uno screenshot o una foto per dare contesto all'AI (Drag & Drop oppure Clicca):", 
         type=["png", "jpg", "jpeg"],
@@ -178,7 +177,16 @@ with col_btn_inv:
     st.button("⇄ Inverti", on_click=ping_pong_lingue, use_container_width=True)
     
 with col_lang_dx:
-    opzioni_dinamiche = sorted(list(set(LINGUE_BASE + [st.session_state.lang_target, st.session_state.last_detected_lang])))
+    # --- NUOVA LOGICA DI ORDINAMENTO PERSONALIZZATO ---
+    lingue_prioritarie = ["Francese", "Italiano", "Inglese", "Russo", "Rumeno", "Spagnolo"]
+    tutte_le_lingue = list(set(LINGUE_BASE + [st.session_state.lang_target, st.session_state.last_detected_lang]))
+    
+    # Separiamo le lingue rimaste mettendole in ordine alfabetico
+    altre_lingue = sorted([l for l in tutte_le_lingue if l not in lingue_prioritarie])
+    
+    # Uniamo la lista VIP con il resto
+    opzioni_dinamiche = lingue_prioritarie + altre_lingue
+    
     st.selectbox("Traduci in:", opzioni_dinamiche, key="lang_target")
 
 # Layout Testi
