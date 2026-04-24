@@ -125,13 +125,11 @@ col_hist, col_reset = st.columns([5, 1])
 
 with col_hist:
     with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
-        # FIX APPLICATO QUI: usiamo value invece di key per slegare il widget e permettere gli aggiornamenti
         testo_contesto = st.text_area(
             "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
             value=st.session_state.storia_contesto, 
             height=120
         )
-        # Sincronizziamo la variabile in background con quello che leggi nel box
         st.session_state.storia_contesto = testo_contesto
         
 with col_reset:
@@ -193,14 +191,16 @@ if btn_traduci:
             lingua_destinazione = st.session_state.lang_target
             
             if st.session_state.storia_contesto.strip():
+                # FIX APPLICATO QUI: Ripristinato il Trigger "Traduci in" e vietata la ripetizione
                 comando_puro = f"""[STORICO DELLA CONVERSAZIONE - SOLO PER CONTESTO]:
 {st.session_state.storia_contesto}
 
 [ATTENZIONE - REGOLA TASSATIVA]:
-Usa lo storico qui sopra ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere alle domande, NON continuare la conversazione e non aggiungere commenti. 
-DEVI SOLO ED ESCLUSIVAMENTE TRADURRE in {lingua_destinazione} il blocco di testo qui sotto.
+Usa lo storico qui sopra ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere e NON continuare la conversazione. 
+Fornisci SOLO ed ESCLUSIVAMENTE la traduzione finale pura, SENZA ripetere la frase "Traduci in...".
 
 [TESTO DA TRADURRE ORA]:
+Traduci in {lingua_destinazione}:
 {testo_da_tradurre}"""
             else:
                 comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
@@ -217,7 +217,7 @@ DEVI SOLO ED ESCLUSIVAMENTE TRADURRE in {lingua_destinazione} il blocco di testo
                 st.session_state.storia_contesto += nuovo_scambio
                 
                 risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
-                st.rerun() # Ricarichiamo per aggiornare visivamente la casella della storia
+                st.rerun() 
                 
             except Exception as e:
                 st.error(f"Errore con le API di Gemini: {e}")
