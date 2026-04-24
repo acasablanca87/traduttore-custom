@@ -13,7 +13,7 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato: il punto di equilibrio per non tagliare il titolo
+# CSS aggiornato
 st.markdown("""
     <style>
         .block-container {
@@ -22,7 +22,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo (sottotitolo eliminato per recuperare spazio)
+# Titolo
 st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
 
 # 2. Configurazione API e Modello
@@ -113,17 +113,20 @@ def nuova_chat():
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# Layout Inline per la Modalità (colonne riproporzionate per azzerare il gap)
-col_lbl_mod, col_radio_mod = st.columns([1, 15])
-with col_lbl_mod:
-    st.markdown("<div style='margin-top: 4px;'>Modalità:</div>", unsafe_allow_html=True)
-with col_radio_mod:
-    contesto_selezionato = st.radio(
-        "Modalità:",
-        ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
-        horizontal=True,
-        label_visibility="collapsed"
-    )
+# NUOVO LAYOUT: Box in evidenza e scelta obbligatoria (index=None)
+with st.container(border=True):
+    col_lbl_mod, col_radio_mod = st.columns([1, 15])
+    with col_lbl_mod:
+        # Etichetta rossa per far capire che è obbligatorio
+        st.markdown("<div style='margin-top: 4px; color: #ff4b4b;'><b>Modalità:*</b></div>", unsafe_allow_html=True)
+    with col_radio_mod:
+        contesto_selezionato = st.radio(
+            "Modalità:",
+            ("🏢 B2B (Uffici, Broker e Clienti)", "👷‍♂️ FIELD (Autisti e Magazzino)"),
+            horizontal=True,
+            label_visibility="collapsed",
+            index=None # <-- NESSUN DEFAULT: Obbliga l'utente a cliccare!
+        )
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
@@ -139,7 +142,6 @@ with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
 st.button("🗑️ Svuota Contesto & 🔄 Inizia Nuova Chat", on_click=nuova_chat)
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 
 # Layout Colonne Lingue
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
@@ -180,7 +182,14 @@ with col_testo_dx:
 
 # 5. Logica di Rilevamento Istantaneo e Traduzione
 if btn_traduci:
-    if testo_da_tradurre.strip():
+    # CONTROLLO BLOCCANTE SULLA MODALITA'
+    if not contesto_selezionato:
+        st.error("⚠️ Attenzione: Seleziona prima la Modalità (B2B o FIELD) nel riquadro in alto!")
+    elif testo_da_tradurre.strip():
+        
+        # Assegnazione del prompt corretto basato sulla scelta
+        prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
+        
         with st.spinner("Elaborazione e traduzione in corso... ⏳"):
             
             # A. RILEVAMENTO LINGUA ISTANTANEO
