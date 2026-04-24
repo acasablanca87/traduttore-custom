@@ -14,11 +14,23 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato: ottimizzazione degli spazi in alto
+# CSS aggiornato: ottimizzazione degli spazi in alto e spostamento tasto copia a sinistra
 st.markdown("""
     <style>
+        /* Ottimizza gli spazi in alto */
         .block-container {
             padding-top: 1.8rem !important; 
+        }
+        
+        /* Sposta il tasto copia a sinistra nel riquadro nero */
+        div[data-testid="stCodeBlock"] button {
+            right: auto !important;
+            left: 0.5rem !important;
+        }
+        
+        /* Sposta il testo tradotto un po' a destra per non farlo coprire dal tasto */
+        div[data-testid="stCodeBlock"] pre {
+            padding-left: 3.5rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
