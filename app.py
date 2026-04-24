@@ -22,9 +22,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo e sottotitolo
+# Titolo (sottotitolo eliminato per recuperare spazio)
 st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
-st.markdown("<div style='font-size: 0.9rem; color: #aaaaaa; margin-bottom: 15px;'>Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.</div>", unsafe_allow_html=True)
 
 # 2. Configurazione API e Modello
 api_key = st.secrets["GEMINI_API_KEY"]
@@ -192,8 +191,6 @@ if btn_traduci:
                 lingua_rilevata = "Non identificata"
                 
             st.session_state.last_detected_lang = lingua_rilevata
-            
-            # (Rimosso il comando ridondante rilevamento_placeholder.text_input per evitare il DuplicateElementId)
 
             # B. PREPARAZIONE DEL COMANDO CON O SENZA CONTESTO
             lingua_destinazione = st.session_state.lang_target
@@ -224,8 +221,6 @@ Traduci in {lingua_destinazione}:
                 st.session_state.storia_contesto += nuovo_scambio
                 
                 risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
-                
-                # Questo ricaricamento automatico aggiornerà correttamente la casella della lingua in alto!
                 st.rerun() 
                 
             except Exception as e:
