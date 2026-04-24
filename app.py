@@ -142,4 +142,33 @@ with col_testo_dx:
 
 # 5. Logica di Rilevamento Istantaneo e Traduzione
 if btn_traduci:
-    if testo
+    if testo_da_tradurre.strip():
+        # Rotellina di caricamento ripristinata per il feedback visivo!
+        with st.spinner("Elaborazione e traduzione in corso... ⏳"):
+            
+            # A. RILEVAMENTO LINGUA ISTANTANEO (in locale tramite langdetect)
+            try:
+                codice_lingua = detect(testo_da_tradurre)
+                lingua_rilevata = MAPPA_LINGUE.get(codice_lingua, f"Sconosciuta ({codice_lingua})")
+            except LangDetectException:
+                lingua_rilevata = "Non identificata"
+                
+            st.session_state.last_detected_lang = lingua_rilevata
+            rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
+
+            # B. TRADUZIONE DIRETTA (senza streaming)
+            lingua_destinazione = st.session_state.lang_target
+            comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
+            prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
+            
+            try:
+                # Chiamata pulita e diretta alle API
+                response = model.generate_content(prompt_completo)
+                
+                st.session_state.testo_tradotto = response.text.strip()
+                risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
+                
+            except Exception as e:
+                st.error(f"Errore con le API di Gemini: {e}")
+    else:
+        st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci'.")
