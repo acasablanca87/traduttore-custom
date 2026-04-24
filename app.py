@@ -86,19 +86,29 @@ LINGUE_BASE = [
     "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# --- Memoria (Ping-Pong) ---
+# --- Memoria (Ping-Pong e Contesto) ---
 if "lang_target" not in st.session_state:
     st.session_state.lang_target = "Tedesco" 
 if "last_detected_lang" not in st.session_state:
     st.session_state.last_detected_lang = "Italiano" 
 if "testo_tradotto" not in st.session_state:
     st.session_state.testo_tradotto = ""
+if "storia_contesto" not in st.session_state:
+    st.session_state.storia_contesto = ""
+if "input_key_counter" not in st.session_state:
+    st.session_state.input_key_counter = 0
 
 def ping_pong_lingue():
     temp = st.session_state.lang_target
     st.session_state.lang_target = st.session_state.last_detected_lang
     st.session_state.last_detected_lang = temp
     st.session_state.testo_tradotto = ""
+
+def nuova_chat():
+    # Svuota tutto e incrementa il contatore per forzare la pulizia della casella di input
+    st.session_state.storia_contesto = ""
+    st.session_state.testo_tradotto = ""
+    st.session_state.input_key_counter += 1
 
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
@@ -109,10 +119,26 @@ contesto_selezionato = st.radio(
     horizontal=True
 )
 
-st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+
+# Layout Cronologia e Tasto Reset
+col_hist, col_reset = st.columns([5, 1])
+
+with col_hist:
+    with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
+        st.text_area(
+            "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
+            key="storia_contesto", 
+            height=120
+        )
+        
+with col_reset:
+    st.button("🗑️ Nuova Chat", on_click=nuova_chat, type="secondary", use_container_width=True)
+
+st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 
-# Layout Colonne
+# Layout Colonne Lingue
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
@@ -132,7 +158,14 @@ with col_lang_dx:
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
-    testo_da_tradurre = st.text_area("Testo Originale:", height=250, label_visibility="collapsed", placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...")
+    # Il key dinamico serve a svuotare il campo quando premiamo "Nuova Chat"
+    testo_da_tradurre = st.text_area(
+        "Testo Originale:", 
+        height=250, 
+        label_visibility="collapsed", 
+        placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...",
+        key=f"input_{st.session_state.input_key_counter}"
+    )
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
@@ -143,10 +176,9 @@ with col_testo_dx:
 # 5. Logica di Rilevamento Istantaneo e Traduzione
 if btn_traduci:
     if testo_da_tradurre.strip():
-        # Rotellina di caricamento ripristinata per il feedback visivo!
         with st.spinner("Elaborazione e traduzione in corso... ⏳"):
             
-            # A. RILEVAMENTO LINGUA ISTANTANEO (in locale tramite langdetect)
+            # A. RILEVAMENTO LINGUA ISTANTANEO
             try:
                 codice_lingua = detect(testo_da_tradurre)
                 lingua_rilevata = MAPPA_LINGUE.get(codice_lingua, f"Sconosciuta ({codice_lingua})")
@@ -156,17 +188,36 @@ if btn_traduci:
             st.session_state.last_detected_lang = lingua_rilevata
             rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
 
-            # B. TRADUZIONE DIRETTA (senza streaming)
+            # B. PREPARAZIONE DEL COMANDO CON O SENZA CONTESTO
             lingua_destinazione = st.session_state.lang_target
-            comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
+            
+            if st.session_state.storia_contesto.strip():
+                # Chirurgia Anti-Chatbot
+                comando_puro = f"""[STORICO DELLA CONVERSAZIONE - SOLO PER CONTESTO]:
+{st.session_state.storia_contesto}
+
+[ATTENZIONE - REGOLA TASSATIVA]:
+Usa lo storico qui sopra ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere alle domande, NON continuare la conversazione e non aggiungere commenti. 
+DEVI SOLO ED ESCLUSIVAMENTE TRADURRE in {lingua_destinazione} il blocco di testo qui sotto.
+
+[TESTO DA TRADURRE ORA]:
+{testo_da_tradurre}"""
+            else:
+                comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
+
             prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
             
             try:
-                # Chiamata pulita e diretta alle API
+                # C. CHIAMATA API E AGGIORNAMENTO
                 response = model.generate_content(prompt_completo)
-                
                 st.session_state.testo_tradotto = response.text.strip()
+                
+                # Salviamo il nuovo scambio nella memoria del contesto
+                nuovo_scambio = f"\n[Da {lingua_rilevata}]: {testo_da_tradurre}\n[In {lingua_destinazione}]: {st.session_state.testo_tradotto}\n---"
+                st.session_state.storia_contesto += nuovo_scambio
+                
                 risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
+                st.rerun() # Ricarichiamo per far apparire subito il testo aggiunto nell'expander
                 
             except Exception as e:
                 st.error(f"Errore con le API di Gemini: {e}")
