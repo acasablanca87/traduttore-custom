@@ -16,7 +16,7 @@ st.markdown("""
 st.markdown("## Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.")
 
-# 2. Configurazione API e Modello
+# 2. Configurazione API e Modello Fisso (Flash Lite)
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
@@ -91,7 +91,6 @@ def ping_pong_lingue():
     temp = st.session_state.lang_target
     st.session_state.lang_target = st.session_state.last_detected_lang
     st.session_state.last_detected_lang = temp
-    # Svuota il risultato precedente
     st.session_state.testo_tradotto = ""
 
 # 4. Interfaccia Utente
@@ -111,7 +110,9 @@ col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
     st.markdown("<div style='margin-top: 5px; color: #aaaaaa;'>🌐 <b>Rilevamento Automatico</b></div>", unsafe_allow_html=True)
-    st.info(f"Ultima lingua rilevata: **{st.session_state.last_detected_lang}**")
+    # Placeholder: una scatola vuota che aggiorniamo dinamicamente senza ricaricare la pagina
+    rilevamento_placeholder = st.empty()
+    rilevamento_placeholder.info(f"Ultima lingua rilevata: **{st.session_state.last_detected_lang}**")
     
 with col_btn_inv:
     st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
@@ -129,8 +130,11 @@ with col_testo_sx:
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
+    # Placeholder per il risultato
+    risultato_placeholder = st.empty()
+    # Mostra la traduzione in memoria se c'è
     if st.session_state.testo_tradotto:
-        st.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
+        risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
 
 # 5. Logica di Rilevamento e Traduzione
 if btn_traduci:
@@ -138,7 +142,6 @@ if btn_traduci:
         with st.spinner("Rilevamento e traduzione (Flash Lite)..."):
             lingua_destinazione = st.session_state.lang_target
             
-            # Formatta l'output per separare il rilevamento dalla traduzione
             comando_invisibile = f"""Identifica la lingua del testo seguente e traducilo in {lingua_destinazione}.
 FORMATO DI OUTPUT OBBLIGATORIO:
 LINGUA: [Nome lingua rilevata in Italiano]
@@ -154,7 +157,7 @@ Testo originale da tradurre:
                 response = model.generate_content(prompt_completo)
                 risposta_grezza = response.text
                 
-                # Parsing
+                # Parsing del risultato
                 if "---" in risposta_grezza:
                     parti = risposta_grezza.split("---", 1)
                     lingua_rilevata = parti[0].replace("LINGUA:", "").strip()
@@ -163,10 +166,13 @@ Testo originale da tradurre:
                     lingua_rilevata = "Sconosciuta"
                     traduzione = risposta_grezza.strip()
                 
-                # Aggiorna la memoria e ricarica
+                # Aggiorna la memoria per il prossimo ciclo (il tasto Inverti)
                 st.session_state.last_detected_lang = lingua_rilevata
                 st.session_state.testo_tradotto = traduzione
-                st.rerun()
+                
+                # INIEZIONE DIRETTA: aggiorna l'interfaccia all'istante nei placeholder creati sopra
+                rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
+                risultato_placeholder.code(traduzione, language=None, wrap_lines=True)
                 
             except Exception as e:
                 st.error(f"Si è verificato un errore con le API di Gemini: {e}")
