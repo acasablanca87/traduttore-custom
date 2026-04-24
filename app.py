@@ -105,7 +105,6 @@ def ping_pong_lingue():
     st.session_state.testo_tradotto = ""
 
 def nuova_chat():
-    # Svuota tutto e incrementa il contatore per forzare la pulizia della casella di input
     st.session_state.storia_contesto = ""
     st.session_state.testo_tradotto = ""
     st.session_state.input_key_counter += 1
@@ -126,11 +125,14 @@ col_hist, col_reset = st.columns([5, 1])
 
 with col_hist:
     with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
-        st.text_area(
+        # FIX APPLICATO QUI: usiamo value invece di key per slegare il widget e permettere gli aggiornamenti
+        testo_contesto = st.text_area(
             "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
-            key="storia_contesto", 
+            value=st.session_state.storia_contesto, 
             height=120
         )
+        # Sincronizziamo la variabile in background con quello che leggi nel box
+        st.session_state.storia_contesto = testo_contesto
         
 with col_reset:
     st.button("🗑️ Nuova Chat", on_click=nuova_chat, type="secondary", use_container_width=True)
@@ -158,7 +160,6 @@ with col_lang_dx:
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
-    # Il key dinamico serve a svuotare il campo quando premiamo "Nuova Chat"
     testo_da_tradurre = st.text_area(
         "Testo Originale:", 
         height=250, 
@@ -192,7 +193,6 @@ if btn_traduci:
             lingua_destinazione = st.session_state.lang_target
             
             if st.session_state.storia_contesto.strip():
-                # Chirurgia Anti-Chatbot
                 comando_puro = f"""[STORICO DELLA CONVERSAZIONE - SOLO PER CONTESTO]:
 {st.session_state.storia_contesto}
 
@@ -217,7 +217,7 @@ DEVI SOLO ED ESCLUSIVAMENTE TRADURRE in {lingua_destinazione} il blocco di testo
                 st.session_state.storia_contesto += nuovo_scambio
                 
                 risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
-                st.rerun() # Ricarichiamo per far apparire subito il testo aggiunto nell'expander
+                st.rerun() # Ricarichiamo per aggiornare visivamente la casella della storia
                 
             except Exception as e:
                 st.error(f"Errore con le API di Gemini: {e}")
