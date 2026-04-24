@@ -88,7 +88,7 @@ LINGUE_BASE = [
 
 # --- Memoria (Ping-Pong e Contesto) ---
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Tedesco" 
+    st.session_state.lang_target = "Francese" # <-- ECCO LA MODIFICA!
 if "last_detected_lang" not in st.session_state:
     st.session_state.last_detected_lang = "Italiano" 
 if "testo_tradotto" not in st.session_state:
@@ -191,7 +191,6 @@ if btn_traduci:
             lingua_destinazione = st.session_state.lang_target
             
             if st.session_state.storia_contesto.strip():
-                # FIX APPLICATO QUI: Ripristinato il Trigger "Traduci in" e vietata la ripetizione
                 comando_puro = f"""[STORICO DELLA CONVERSAZIONE - SOLO PER CONTESTO]:
 {st.session_state.storia_contesto}
 
