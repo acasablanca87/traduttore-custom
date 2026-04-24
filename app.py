@@ -13,16 +13,16 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato per dimezzare lo spazio in alto
+# CSS aggiornato: il punto di equilibrio per non tagliare il titolo
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 1rem !important; 
+            padding-top: 1.8rem !important; 
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo e sottotitolo rimpiccioliti e aggiornati
+# Titolo e sottotitolo
 st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
 st.markdown("<div style='font-size: 0.9rem; color: #aaaaaa; margin-bottom: 15px;'>Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.</div>", unsafe_allow_html=True)
 
@@ -114,10 +114,10 @@ def nuova_chat():
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# Layout Inline per la Modalità
-col_lbl_mod, col_radio_mod = st.columns([1, 10])
+# Layout Inline per la Modalità (colonne riproporzionate per azzerare il gap)
+col_lbl_mod, col_radio_mod = st.columns([1, 15])
 with col_lbl_mod:
-    st.markdown("<div style='margin-top: 5px;'>Modalità:</div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 4px;'>Modalità:</div>", unsafe_allow_html=True)
 with col_radio_mod:
     contesto_selezionato = st.radio(
         "Modalità:",
