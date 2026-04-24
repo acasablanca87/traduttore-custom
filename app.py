@@ -193,14 +193,17 @@ with col_lang_dx:
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
-    testo_da_tradurre = st.text_area(
-        "Testo Originale:", 
-        height=250, 
-        label_visibility="collapsed", 
-        placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...",
-        key=f"input_{st.session_state.input_key_counter}"
-    )
-    btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
+    # --- MODIFICA CRUCIALE: Form invisibile per far funzionare il Ctrl+Enter ---
+    with st.form(key=f"form_traduzione_{st.session_state.input_key_counter}", border=False):
+        testo_da_tradurre = st.text_area(
+            "Testo Originale:", 
+            height=250, 
+            label_visibility="collapsed", 
+            placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...",
+            key=f"input_{st.session_state.input_key_counter}"
+        )
+        # Sostituito st.button con st.form_submit_button
+        btn_traduci = st.form_submit_button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
     risultato_placeholder = st.empty()
@@ -270,4 +273,4 @@ Traduci in {lingua_destinazione}:
             except Exception as e:
                 st.error(f"Errore con le API di Gemini: {e}")
     else:
-        st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci'.")
+        st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci' o usare Ctrl+Enter.")
