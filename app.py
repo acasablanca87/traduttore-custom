@@ -1,6 +1,7 @@
 import streamlit as st
 import google.generativeai as genai
 from langdetect import detect, LangDetectException
+from PIL import Image
 
 # --- Mappa per tradurre i codici di langdetect nei nostri nomi ---
 MAPPA_LINGUE = {
@@ -13,7 +14,7 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato
+# CSS aggiornato: ottimizzazione degli spazi in alto
 st.markdown("""
     <style>
         .block-container {
@@ -22,7 +23,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo
+# Titolo compatto
 st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
 
 # 2. Configurazione API e Modello
@@ -63,7 +64,7 @@ Agisci come un Senior B2B Logistics Liaison & International Trade Consultant. Se
 🌍 Contesto Operativo e Regole:
 • Output: Fornisci solo il testo tradotto, senza introduzioni o commenti.
 • Cifre: Mantieni i numeri in formato numerico.
-• Formato: Se il testo originale è complesso, organizzalo per punti se migliora la chiarezza professionale.
+• Formato: Se il testo originale è complex, organizzalo per punti se migliora la chiarezza professionale.
 
 Gestione Testi Sgrammaticati e Gergo B2B (MOLTO IMPORTANTE):
 • Spesso riceverai testi in un inglese/francese approssimativo scritto da operatori frettolosi. NON tradurre letteralmente.
@@ -110,12 +111,13 @@ def ping_pong_lingue():
 def nuova_chat():
     st.session_state.storia_contesto = ""
     st.session_state.testo_tradotto = ""
+    # Questo counter fa resettare tutte le caselle (testo e immagine)
     st.session_state.input_key_counter += 1
 
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# NUOVO LAYOUT: Colore dinamico per l'etichetta Modalità
+# Layout Inline per la Modalità con colore dinamico
 colore_etichetta = "#ff4b4b" if st.session_state.modalita_selezionata is None else "inherit"
 
 with st.container(border=True):
@@ -134,14 +136,27 @@ with st.container(border=True):
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
-# Expander Cronologia e Tasto Reset allineati a sinistra
-with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
+# Expander Cronologia, Contesto e Immagini
+with st.expander("📜 Cronologia, Contesto & Immagini (Opzionale)", expanded=False):
     testo_contesto = st.text_area(
         "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
         value=st.session_state.storia_contesto, 
         height=120
     )
     st.session_state.storia_contesto = testo_contesto
+    
+    st.markdown("---")
+    
+    # Caricatore Immagini Drag & Drop (si resetta da solo grazie alla key dinamica)
+    immagine_caricata = st.file_uploader(
+        "📎 Allega uno screenshot o una foto per dare contesto all'AI (Drag & Drop oppure Clicca):", 
+        type=["png", "jpg", "jpeg"],
+        key=f"img_uploader_{st.session_state.input_key_counter}"
+    )
+    
+    # Anteprima dell'immagine caricata
+    if immagine_caricata:
+        st.image(immagine_caricata, caption="Anteprima immagine allegata", width=250)
 
 st.button("🗑️ Svuota Contesto & 🔄 Inizia Nuova Chat", on_click=nuova_chat)
 
@@ -186,12 +201,10 @@ with col_testo_dx:
 
 # 5. Logica di Rilevamento Istantaneo e Traduzione
 if btn_traduci:
-    # CONTROLLO BLOCCANTE SULLA MODALITA'
     if not contesto_selezionato:
         st.error("⚠️ Attenzione: Seleziona prima la Modalità (B2B o FIELD) nel riquadro in alto!")
     elif testo_da_tradurre.strip():
         
-        # Assegnazione del prompt corretto basato sulla scelta
         prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
         
         with st.spinner("Elaborazione e traduzione in corso... ⏳"):
@@ -213,7 +226,7 @@ if btn_traduci:
 {st.session_state.storia_contesto}
 
 [ATTENZIONE - REGOLA TASSATIVA]:
-Usa lo storico qui sopra ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere e NON continuare la conversazione. 
+Usa lo storico qui sopra e l'eventuale immagine fornita ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere e NON continuare la conversazione. 
 Fornisci SOLO ed ESCLUSIVAMENTE la traduzione finale pura, SENZA ripetere la frase "Traduci in...".
 
 [TESTO DA TRADURRE ORA]:
@@ -224,9 +237,19 @@ Traduci in {lingua_destinazione}:
 
             prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
             
+            # C. PREPARAZIONE DEL PACCHETTO DATI (Testo + Immagine)
+            payload_gemini = [prompt_completo]
+            
+            if immagine_caricata is not None:
+                try:
+                    img = Image.open(immagine_caricata)
+                    payload_gemini.append(img)
+                except Exception as e:
+                    st.warning(f"Errore durante l'apertura dell'immagine: {e}")
+            
             try:
-                # C. CHIAMATA API E AGGIORNAMENTO
-                response = model.generate_content(prompt_completo)
+                # D. CHIAMATA API E AGGIORNAMENTO
+                response = model.generate_content(payload_gemini)
                 st.session_state.testo_tradotto = response.text.strip()
                 
                 # Salviamo il nuovo scambio nella memoria del contesto
