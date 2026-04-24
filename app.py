@@ -88,7 +88,7 @@ LINGUE_BASE = [
 
 # --- Memoria (Ping-Pong e Contesto) ---
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Francese" # <-- ECCO LA MODIFICA!
+    st.session_state.lang_target = "Francese" 
 if "last_detected_lang" not in st.session_state:
     st.session_state.last_detected_lang = "Italiano" 
 if "testo_tradotto" not in st.session_state:
@@ -120,20 +120,16 @@ contesto_selezionato = st.radio(
 
 st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
 
-# Layout Cronologia e Tasto Reset
-col_hist, col_reset = st.columns([5, 1])
+# Expander Cronologia e Tasto Reset allineati a sinistra
+with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
+    testo_contesto = st.text_area(
+        "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
+        value=st.session_state.storia_contesto, 
+        height=120
+    )
+    st.session_state.storia_contesto = testo_contesto
 
-with col_hist:
-    with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
-        testo_contesto = st.text_area(
-            "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
-            value=st.session_state.storia_contesto, 
-            height=120
-        )
-        st.session_state.storia_contesto = testo_contesto
-        
-with col_reset:
-    st.button("🗑️ Nuova Chat", on_click=nuova_chat, type="secondary", use_container_width=True)
+st.button("🗑️ Svuota Contesto & 🔄 Inizia Nuova Chat", on_click=nuova_chat)
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
@@ -142,12 +138,16 @@ prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
-    st.markdown("<div style='margin-top: 5px; color: #aaaaaa;'>🌐 <b>Rilevamento Automatico</b></div>", unsafe_allow_html=True)
+    # Utilizziamo un text_input disabilitato per uniformare perfettamente la grafica
     rilevamento_placeholder = st.empty()
-    rilevamento_placeholder.info(f"Ultima lingua rilevata: **{st.session_state.last_detected_lang}**")
+    rilevamento_placeholder.text_input(
+        "🌐 Rilevamento Automatico:", 
+        value=st.session_state.last_detected_lang, 
+        disabled=True
+    )
     
 with col_btn_inv:
-    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
     st.button("⇄ Inverti", on_click=ping_pong_lingue, use_container_width=True)
     
 with col_lang_dx:
@@ -185,7 +185,11 @@ if btn_traduci:
                 lingua_rilevata = "Non identificata"
                 
             st.session_state.last_detected_lang = lingua_rilevata
-            rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
+            rilevamento_placeholder.text_input(
+                "🌐 Rilevamento Automatico:", 
+                value=lingua_rilevata, 
+                disabled=True
+            )
 
             # B. PREPARAZIONE DEL COMANDO CON O SENZA CONTESTO
             lingua_destinazione = st.session_state.lang_target
