@@ -1,10 +1,18 @@
 import streamlit as st
 import google.generativeai as genai
+from langdetect import detect, LangDetectException
+
+# --- Mappa per tradurre i codici di langdetect nei nostri nomi ---
+MAPPA_LINGUE = {
+    'it': 'Italiano', 'fr': 'Francese', 'en': 'Inglese', 'es': 'Spagnolo',
+    'de': 'Tedesco', 'nl': 'Olandese', 'ro': 'Rumeno', 'ru': 'Russo',
+    'be': 'Bielorusso', 'uk': 'Ucraino', 'pl': 'Polacco', 'ar': 'Arabo/Tunisino',
+    'bg': 'Bulgaro', 'cs': 'Ceco', 'sk': 'Slovacco', 'sl': 'Sloveno', 'hu': 'Ungherese'
+}
 
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# Iniezione CSS per ridurre lo spazio vuoto in alto
 st.markdown("""
     <style>
         .block-container {
@@ -16,7 +24,7 @@ st.markdown("""
 st.markdown("## Traduttore AI settore Logistica 🚛")
 st.markdown("Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.")
 
-# 2. Configurazione API e Modello Fisso (Flash Lite)
+# 2. Configurazione API e Modello
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
@@ -78,7 +86,7 @@ LINGUE_BASE = [
     "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# --- NUOVA GESTIONE DELLA MEMORIA (Ping-Pong) ---
+# --- Memoria (Ping-Pong) ---
 if "lang_target" not in st.session_state:
     st.session_state.lang_target = "Tedesco" 
 if "last_detected_lang" not in st.session_state:
@@ -87,7 +95,6 @@ if "testo_tradotto" not in st.session_state:
     st.session_state.testo_tradotto = ""
 
 def ping_pong_lingue():
-    # Inverte la destinazione con l'ultima lingua rilevata dal testo
     temp = st.session_state.lang_target
     st.session_state.lang_target = st.session_state.last_detected_lang
     st.session_state.last_detected_lang = temp
@@ -105,12 +112,11 @@ contesto_selezionato = st.radio(
 st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 
-# Layout Colonne Lingue
+# Layout Colonne
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
     st.markdown("<div style='margin-top: 5px; color: #aaaaaa;'>🌐 <b>Rilevamento Automatico</b></div>", unsafe_allow_html=True)
-    # Placeholder: una scatola vuota che aggiorniamo dinamicamente senza ricaricare la pagina
     rilevamento_placeholder = st.empty()
     rilevamento_placeholder.info(f"Ultima lingua rilevata: **{st.session_state.last_detected_lang}**")
     
@@ -130,51 +136,41 @@ with col_testo_sx:
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
-    # Placeholder per il risultato
     risultato_placeholder = st.empty()
-    # Mostra la traduzione in memoria se c'è
     if st.session_state.testo_tradotto:
         risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
 
-# 5. Logica di Rilevamento e Traduzione
+# 5. Logica di Rilevamento Istantaneo e Traduzione Streaming
 if btn_traduci:
     if testo_da_tradurre.strip():
-        with st.spinner("Rilevamento e traduzione (Flash Lite)..."):
-            lingua_destinazione = st.session_state.lang_target
+        # A. RILEVAMENTO LINGUA ISTANTANEO (in locale tramite langdetect)
+        try:
+            codice_lingua = detect(testo_da_tradurre)
+            lingua_rilevata = MAPPA_LINGUE.get(codice_lingua, f"Sconosciuta ({codice_lingua})")
+        except LangDetectException:
+            lingua_rilevata = "Non identificata"
             
-            comando_invisibile = f"""Identifica la lingua del testo seguente e traducilo in {lingua_destinazione}.
-FORMATO DI OUTPUT OBBLIGATORIO:
-LINGUA: [Nome lingua rilevata in Italiano]
----
-[Solo la traduzione pura, senza commenti o introduzioni]
+        # Aggiorniamo subito l'interfaccia senza aspettare Gemini
+        st.session_state.last_detected_lang = lingua_rilevata
+        rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
 
-Testo originale da tradurre:
-{testo_da_tradurre}"""
+        # B. TRADUZIONE IN STREAMING (parola per parola)
+        lingua_destinazione = st.session_state.lang_target
+        comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
+        prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
+        
+        try:
+            # stream=True attiva l'effetto "macchina da scrivere"
+            response = model.generate_content(prompt_completo, stream=True)
             
-            prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_invisibile}"
+            testo_accumulato = ""
+            for chunk in response:
+                testo_accumulato += chunk.text
+                risultato_placeholder.code(testo_accumulato, language=None, wrap_lines=True)
             
-            try:
-                response = model.generate_content(prompt_completo)
-                risposta_grezza = response.text
-                
-                # Parsing del risultato
-                if "---" in risposta_grezza:
-                    parti = risposta_grezza.split("---", 1)
-                    lingua_rilevata = parti[0].replace("LINGUA:", "").strip()
-                    traduzione = parti[1].strip()
-                else:
-                    lingua_rilevata = "Sconosciuta"
-                    traduzione = risposta_grezza.strip()
-                
-                # Aggiorna la memoria per il prossimo ciclo (il tasto Inverti)
-                st.session_state.last_detected_lang = lingua_rilevata
-                st.session_state.testo_tradotto = traduzione
-                
-                # INIEZIONE DIRETTA: aggiorna l'interfaccia all'istante nei placeholder creati sopra
-                rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
-                risultato_placeholder.code(traduzione, language=None, wrap_lines=True)
-                
-            except Exception as e:
-                st.error(f"Si è verificato un errore con le API di Gemini: {e}")
+            st.session_state.testo_tradotto = testo_accumulato
+            
+        except Exception as e:
+            st.error(f"Errore con le API di Gemini: {e}")
     else:
         st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci'.")
