@@ -98,6 +98,8 @@ if "storia_contesto" not in st.session_state:
     st.session_state.storia_contesto = ""
 if "input_key_counter" not in st.session_state:
     st.session_state.input_key_counter = 0
+if "modalita_selezionata" not in st.session_state:
+    st.session_state.modalita_selezionata = None
 
 def ping_pong_lingue():
     temp = st.session_state.lang_target
@@ -113,19 +115,21 @@ def nuova_chat():
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# NUOVO LAYOUT: Box in evidenza e scelta obbligatoria (index=None)
+# NUOVO LAYOUT: Colore dinamico per l'etichetta Modalità
+colore_etichetta = "#ff4b4b" if st.session_state.modalita_selezionata is None else "inherit"
+
 with st.container(border=True):
     col_lbl_mod, col_radio_mod = st.columns([1, 15])
     with col_lbl_mod:
-        # Etichetta rossa per far capire che è obbligatorio
-        st.markdown("<div style='margin-top: 4px; color: #ff4b4b;'><b>Modalità:*</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top: 4px; color: {colore_etichetta};'><b>Modalità:</b></div>", unsafe_allow_html=True)
     with col_radio_mod:
         contesto_selezionato = st.radio(
             "Modalità:",
             ("🏢 B2B (Uffici, Broker e Clienti)", "👷‍♂️ FIELD (Autisti e Magazzino)"),
             horizontal=True,
             label_visibility="collapsed",
-            index=None # <-- NESSUN DEFAULT: Obbliga l'utente a cliccare!
+            index=None,
+            key="modalita_selezionata"
         )
 
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
