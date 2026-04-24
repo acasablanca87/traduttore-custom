@@ -13,16 +13,18 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
+# CSS aggiornato per dimezzare lo spazio in alto
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 2rem !important;
+            padding-top: 1rem !important; 
         }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("## Traduttore AI settore Logistica 🚛")
-st.markdown("Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.")
+# Titolo e sottotitolo rimpiccioliti e aggiornati
+st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
+st.markdown("<div style='font-size: 0.9rem; color: #aaaaaa; margin-bottom: 15px;'>Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.</div>", unsafe_allow_html=True)
 
 # 2. Configurazione API e Modello
 api_key = st.secrets["GEMINI_API_KEY"]
@@ -112,13 +114,19 @@ def nuova_chat():
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-contesto_selezionato = st.radio(
-    "Modalità:",
-    ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
-    horizontal=True
-)
+# Layout Inline per la Modalità
+col_lbl_mod, col_radio_mod = st.columns([1, 10])
+with col_lbl_mod:
+    st.markdown("<div style='margin-top: 5px;'>Modalità:</div>", unsafe_allow_html=True)
+with col_radio_mod:
+    contesto_selezionato = st.radio(
+        "Modalità:",
+        ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
-st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # Expander Cronologia e Tasto Reset allineati a sinistra
 with st.expander("📜 Cronologia & Contesto (Opzionale)", expanded=False):
@@ -138,7 +146,6 @@ prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
-    # Utilizziamo un text_input disabilitato per uniformare perfettamente la grafica
     rilevamento_placeholder = st.empty()
     rilevamento_placeholder.text_input(
         "🌐 Rilevamento Automatico:", 
