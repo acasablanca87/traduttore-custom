@@ -13,16 +13,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo più piccolo (usa h2 invece del titolo principale di Streamlit)
 st.markdown("## Traduttore AI settore Logistica 🚛")
-st.markdown("Seleziona il contesto e le lingue. Inserisci il testo e premi Traduci.")
+st.markdown("Seleziona il contesto. Il sistema rileva in automatico la lingua di partenza.")
 
-# 2. Configurazione API e Modello Fisso (Flash Lite)
+# 2. Configurazione API e Modello
 api_key = st.secrets["GEMINI_API_KEY"]
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
 
-# 3. Definizione dei Prompts di Contesto Potenziati
+# 3. Definizione dei Prompts ORIGINALI COMPLETI
 PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
 
 Istruzioni Operative:
@@ -73,83 +72,102 @@ Esempi di Stile e Deduzione:
 • Niente "Gergo da Strada" o colloquialismi. Sostituisci il tono "spicciolo" con verbi d'azione chiari (es. "Confermare", "Autorizzare", "Notificare").
 • Focus Geopolitico: Mantieni una neutralità assoluta e distaccata, specialmente verso le lingue dell'est Europa."""
 
-LINGUE = [
+LINGUE_BASE = [
     "Italiano", "Francese", "Inglese", "Spagnolo", 
     "Tedesco", "Olandese", "Rumeno", "Russo", 
     "Bielorusso", "Ucraino", "Polacco", "Tunisino"
 ]
 
-# Gestione della Memoria (Session State)
-if "lang_source" not in st.session_state:
-    st.session_state.lang_source = "Italiano"
+# --- NUOVA GESTIONE DELLA MEMORIA (Ping-Pong) ---
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Francese"
+    st.session_state.lang_target = "Tedesco" 
+if "last_detected_lang" not in st.session_state:
+    st.session_state.last_detected_lang = "Italiano" 
+if "testo_tradotto" not in st.session_state:
+    st.session_state.testo_tradotto = ""
 
-def inverti_lingue():
-    st.session_state.lang_source, st.session_state.lang_target = st.session_state.lang_target, st.session_state.lang_source
+def ping_pong_lingue():
+    # Inverte la destinazione con l'ultima lingua rilevata dal testo
+    temp = st.session_state.lang_target
+    st.session_state.lang_target = st.session_state.last_detected_lang
+    st.session_state.last_detected_lang = temp
+    # Svuota il risultato precedente
+    st.session_state.testo_tradotto = ""
 
 # 4. Interfaccia Utente
-
-# Testo normale in grassetto: stessa grandezza dei radio button
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# SELETTORE DEL CONTESTO
 contesto_selezionato = st.radio(
     "Modalità:",
     ("B2B (Uffici, Broker e Clienti)", "FIELD (Autisti e Magazzino)"),
     horizontal=True
 )
 
-# Linea di divisione con margini personalizzati ridotti
 st.markdown("<hr style='margin-top: 10px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
 
-if "B2B" in contesto_selezionato:
-    prompt_attivo = PROMPT_B2B
-else:
-    prompt_attivo = PROMPT_FIELD
-
-# Layout Lingue
+# Layout Colonne Lingue
 col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
 
 with col_lang_sx:
-    st.selectbox("Traduci da:", LINGUE, key="lang_source")
+    st.markdown("<div style='margin-top: 5px; color: #aaaaaa;'>🌐 <b>Rilevamento Automatico</b></div>", unsafe_allow_html=True)
+    st.info(f"Ultima lingua rilevata: **{st.session_state.last_detected_lang}**")
     
 with col_btn_inv:
-    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-    st.button("⇄ Inverti", on_click=inverti_lingue, use_container_width=True)
+    st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
+    st.button("⇄ Inverti", on_click=ping_pong_lingue, use_container_width=True)
     
 with col_lang_dx:
-    st.selectbox("Traduci a:", LINGUE, key="lang_target")
+    opzioni_dinamiche = sorted(list(set(LINGUE_BASE + [st.session_state.lang_target, st.session_state.last_detected_lang])))
+    st.selectbox("Traduci in:", opzioni_dinamiche, key="lang_target")
 
 # Layout Testi
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
-    testo_da_tradurre = st.text_area("Testo Originale:", height=250, label_visibility="collapsed", placeholder="Incolla qui il testo da tradurre...")
+    testo_da_tradurre = st.text_area("Testo Originale:", height=250, label_visibility="collapsed", placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...")
     btn_traduci = st.button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
-    # Contenitore per il risultato
-    risultato_container = st.container()
-    
-# 5. Logica di Traduzione
+    if st.session_state.testo_tradotto:
+        st.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
+
+# 5. Logica di Rilevamento e Traduzione
 if btn_traduci:
     if testo_da_tradurre.strip():
-        with st.spinner("Traduzione in corso (Flash Lite)..."):
-            
-            lingua_origine = st.session_state.lang_source
+        with st.spinner("Rilevamento e traduzione (Flash Lite)..."):
             lingua_destinazione = st.session_state.lang_target
             
-            comando_invisibile = f"Traduci in {lingua_destinazione} (dal {lingua_origine}):\n\n{testo_da_tradurre}"
+            # Formatta l'output per separare il rilevamento dalla traduzione
+            comando_invisibile = f"""Identifica la lingua del testo seguente e traducilo in {lingua_destinazione}.
+FORMATO DI OUTPUT OBBLIGATORIO:
+LINGUA: [Nome lingua rilevata in Italiano]
+---
+[Solo la traduzione pura, senza commenti o introduzioni]
+
+Testo originale da tradurre:
+{testo_da_tradurre}"""
+            
             prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_invisibile}"
             
             try:
                 response = model.generate_content(prompt_completo)
+                risposta_grezza = response.text
                 
-                with risultato_container:
-                    # Stampa il risultato con ritorno a capo automatico e tasto copia
-                    st.code(response.text, language=None, wrap_lines=True)
-                    
+                # Parsing
+                if "---" in risposta_grezza:
+                    parti = risposta_grezza.split("---", 1)
+                    lingua_rilevata = parti[0].replace("LINGUA:", "").strip()
+                    traduzione = parti[1].strip()
+                else:
+                    lingua_rilevata = "Sconosciuta"
+                    traduzione = risposta_grezza.strip()
+                
+                # Aggiorna la memoria e ricarica
+                st.session_state.last_detected_lang = lingua_rilevata
+                st.session_state.testo_tradotto = traduzione
+                st.rerun()
+                
             except Exception as e:
                 st.error(f"Si è verificato un errore con le API di Gemini: {e}")
     else:
