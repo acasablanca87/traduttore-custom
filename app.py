@@ -140,37 +140,6 @@ with col_testo_dx:
     if st.session_state.testo_tradotto:
         risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
 
-# 5. Logica di Rilevamento Istantaneo e Traduzione Streaming
+# 5. Logica di Rilevamento Istantaneo e Traduzione
 if btn_traduci:
-    if testo_da_tradurre.strip():
-        # A. RILEVAMENTO LINGUA ISTANTANEO (in locale tramite langdetect)
-        try:
-            codice_lingua = detect(testo_da_tradurre)
-            lingua_rilevata = MAPPA_LINGUE.get(codice_lingua, f"Sconosciuta ({codice_lingua})")
-        except LangDetectException:
-            lingua_rilevata = "Non identificata"
-            
-        # Aggiorniamo subito l'interfaccia senza aspettare Gemini
-        st.session_state.last_detected_lang = lingua_rilevata
-        rilevamento_placeholder.info(f"Ultima lingua rilevata: **{lingua_rilevata}**")
-
-        # B. TRADUZIONE IN STREAMING (parola per parola)
-        lingua_destinazione = st.session_state.lang_target
-        comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
-        prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
-        
-        try:
-            # stream=True attiva l'effetto "macchina da scrivere"
-            response = model.generate_content(prompt_completo, stream=True)
-            
-            testo_accumulato = ""
-            for chunk in response:
-                testo_accumulato += chunk.text
-                risultato_placeholder.code(testo_accumulato, language=None, wrap_lines=True)
-            
-            st.session_state.testo_tradotto = testo_accumulato
-            
-        except Exception as e:
-            st.error(f"Errore con le API di Gemini: {e}")
-    else:
-        st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci'.")
+    if testo
