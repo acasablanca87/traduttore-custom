@@ -35,10 +35,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo compatto, più piccolo e con "Powered by Gemini" integrato
+# Titolo compatto, più piccolo e con firma/credits in inglese
 st.markdown(
     "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI settore Logistica & Trasporti 🚛 "
-    "<span style='font-size: 0.65em; font-weight: normal; color: #888;'>| Powered by Gemini ✨</span></h4>", 
+    "<span style='font-size: 0.65em; font-weight: normal; color: #888;'>| Powered by Gemini ✨ | Web app created by acasablanca with the help of Gemini</span></h4>", 
     unsafe_allow_html=True
 )
 
