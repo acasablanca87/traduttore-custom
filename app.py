@@ -148,7 +148,7 @@ with st.container(border=True):
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # Expander Cronologia, Contesto e Immagini
-with st.expander("📜 Cronologia e Contesto (Opzionale)", expanded=False):
+with st.expander("📜 Cronologia, Contesto & Immagini (Opzionale)", expanded=False):
     testo_contesto = st.text_area(
         "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
         value=st.session_state.storia_contesto, 
@@ -169,7 +169,7 @@ with st.expander("📜 Cronologia e Contesto (Opzionale)", expanded=False):
     if immagine_caricata:
         st.image(immagine_caricata, caption="Anteprima immagine allegata", width=250)
 
-st.button("🗑️🔄 Svuota Cronologia & Inizia Nuova Chat", on_click=nuova_chat)
+st.button("🗑️ Svuota Contesto & 🔄 Inizia Nuova Chat", on_click=nuova_chat)
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
@@ -189,23 +189,46 @@ with col_btn_inv:
     st.button("⇄ Inverti", on_click=ping_pong_lingue, use_container_width=True)
     
 with col_lang_dx:
-    # --- NUOVA LOGICA DI ORDINAMENTO PERSONALIZZATO ---
+    # --- NUOVA LOGICA: Ordinamento personalizzato + Opzione "Altro..." ---
     lingue_prioritarie = ["Francese", "Italiano", "Inglese", "Russo", "Rumeno", "Spagnolo"]
-    tutte_le_lingue = list(set(LINGUE_BASE + [st.session_state.lang_target, st.session_state.last_detected_lang]))
     
-    # Separiamo le lingue rimaste mettendole in ordine alfabetico
-    altre_lingue = sorted([l for l in tutte_le_lingue if l not in lingue_prioritarie])
+    # Raccogliamo tutte le lingue note ed evitiamo doppioni
+    tutte_le_lingue_note = list(set(LINGUE_BASE + [st.session_state.last_detected_lang]))
     
-    # Uniamo la lista VIP con il resto
-    opzioni_dinamiche = lingue_prioritarie + altre_lingue
+    # Separiamo e ordiniamo alfabeticamente quelle non prioritarie
+    altre_lingue = sorted([l for l in tutte_le_lingue_note if l not in lingue_prioritarie and l != "Altro..."])
     
-    st.selectbox("Traduci in:", opzioni_dinamiche, key="lang_target")
+    # Creiamo la lista finale aggiungendo "Altro..." in fondo
+    opzioni_dinamiche = lingue_prioritarie + altre_lingue + ["Altro..."]
+    
+    # Capiamo quale indice mostrare di default nella tendina
+    indice_default = 0
+    if st.session_state.lang_target in opzioni_dinamiche:
+        indice_default = opzioni_dinamiche.index(st.session_state.lang_target)
+    elif st.session_state.lang_target: 
+        # Se la lingua in memoria non è nella lista, significa che l'avevamo scritta a mano prima
+        indice_default = opzioni_dinamiche.index("Altro...")
+        
+    scelta_tendina = st.selectbox("Traduci in:", opzioni_dinamiche, index=indice_default)
+
+    # Se l'utente seleziona "Altro...", mostriamo il campo di testo libero
+    if scelta_tendina == "Altro...":
+        lingua_custom = st.text_input(
+            "Scrivi la lingua:", 
+            value=st.session_state.lang_target if st.session_state.lang_target not in opzioni_dinamiche else "",
+            placeholder="es. Portoghese"
+        )
+        # Aggiorniamo la memoria con quello che l'utente ha scritto
+        st.session_state.lang_target = lingua_custom.strip()
+    else:
+        # Aggiorniamo la memoria con la scelta dalla tendina
+        st.session_state.lang_target = scelta_tendina
 
 # Layout Testi
 col_testo_sx, col_testo_dx = st.columns(2)
 
 with col_testo_sx:
-    # --- MODIFICA CRUCIALE: Form invisibile per far funzionare il Ctrl+Enter ---
+    # --- Form invisibile per far funzionare il Ctrl+Enter ---
     with st.form(key=f"form_traduzione_{st.session_state.input_key_counter}", border=False):
         testo_da_tradurre = st.text_area(
             "Testo Originale:", 
@@ -214,7 +237,6 @@ with col_testo_sx:
             placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...",
             key=f"input_{st.session_state.input_key_counter}"
         )
-        # Sostituito st.button con st.form_submit_button
         btn_traduci = st.form_submit_button("Traduci", type="primary", use_container_width=True)
 
 with col_testo_dx:
