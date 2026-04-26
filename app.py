@@ -14,7 +14,7 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato: Opzione "Nucleare" per spostare il tasto copia a sinistra
+# CSS aggiornato: ottimizzazione degli spazi in alto e spostamento tasto copia a sinistra
 st.markdown("""
     <style>
         /* Ottimizza gli spazi in alto */
@@ -22,21 +22,14 @@ st.markdown("""
             padding-top: 1.8rem !important; 
         }
         
-        /* OPZIONE NUCLEARE: Cattura il tasto copia in base a tutti i possibili attributi Streamlit */
-        div[data-testid="stCodeBlock"] > div > div > button,
-        div[data-testid="stCodeBlock"] button,
-        button[title="Copy to clipboard"],
-        button[kind="header"] {
-            position: absolute !important;
+        /* Sposta il tasto copia a sinistra nel riquadro nero */
+        div[data-testid="stCodeBlock"] button {
             right: auto !important;
             left: 0.5rem !important;
-            top: 0.5rem !important;
-            z-index: 9999 !important;
         }
         
-        /* Spinge il testo tradotto a destra per non farlo sovrapporre al tastino */
-        div[data-testid="stCodeBlock"] pre,
-        div[data-testid="stCodeBlock"] code {
+        /* Sposta il testo tradotto un po' a destra per non farlo coprire dal tasto */
+        div[data-testid="stCodeBlock"] pre {
             padding-left: 3.5rem !important;
         }
     </style>
