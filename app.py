@@ -38,7 +38,7 @@ st.markdown("""
 # Titolo compatto, più piccolo e con firma/credits in inglese
 st.markdown(
     "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI settore Logistica & Trasporti 🚛 "
-    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'> Powered by Google Gemini ✨ | Web App created by angelocasablanca with the help of Google Gemini</span></h4>", 
+    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'> Powered by Google Gemini ✨ | Concept by angelocasablanca • Code by Google </span></h4>", 
     unsafe_allow_html=True
 )
 
