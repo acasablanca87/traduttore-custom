@@ -148,7 +148,7 @@ with st.container(border=True):
 st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
 
 # Expander Cronologia, Contesto e Immagini
-with st.expander("📜 Cronologia, Contesto & Immagini (Opzionale)", expanded=False):
+with st.expander("📜 Cronologia e Contesto (Opzionale)", expanded=False):
     testo_contesto = st.text_area(
         "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
         value=st.session_state.storia_contesto, 
