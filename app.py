@@ -169,7 +169,7 @@ with st.expander("📜 Cronologia, Contesto & Immagini (Opzionale)", expanded=Fa
     if immagine_caricata:
         st.image(immagine_caricata, caption="Anteprima immagine allegata", width=250)
 
-st.button("🗑️ Svuota Contesto & 🔄 Inizia Nuova Chat", on_click=nuova_chat)
+st.button("🗑️🔄 Svuota Cronologia & Inizia Nuova Chat", on_click=nuova_chat)
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
