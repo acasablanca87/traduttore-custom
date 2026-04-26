@@ -35,8 +35,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo compatto
-st.markdown("### Traduttore AI settore Logistica & Trasporti 🚛")
+# Titolo compatto, più piccolo e con "Powered by Gemini" integrato
+st.markdown(
+    "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI settore Logistica & Trasporti 🚛 "
+    "<span style='font-size: 0.65em; font-weight: normal; color: #888;'>| Powered by Gemini ✨</span></h4>", 
+    unsafe_allow_html=True
+)
 
 # 2. Configurazione API e Modello
 api_key = st.secrets["GEMINI_API_KEY"]
@@ -126,7 +130,6 @@ def nuova_chat():
     st.session_state.input_key_counter += 1
 
 # 4. Interfaccia Utente
-st.markdown("**⚙️ Impostazioni Traduzione**")
 
 # Layout Inline per la Modalità con stile dinamico (Testo + Sfondo)
 if st.session_state.modalita_selezionata is None:
