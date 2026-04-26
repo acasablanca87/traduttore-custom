@@ -128,13 +128,18 @@ def nuova_chat():
 # 4. Interfaccia Utente
 st.markdown("**⚙️ Impostazioni Traduzione**")
 
-# Layout Inline per la Modalità con colore dinamico
-colore_etichetta = "#ff4b4b" if st.session_state.modalita_selezionata is None else "inherit"
+# Layout Inline per la Modalità con stile dinamico (Testo + Sfondo)
+if st.session_state.modalita_selezionata is None:
+    # Modalità NON selezionata: testo rosso, sfondo giallo, margini arrotondati
+    stile_dinamico = "color: #ff4b4b; background-color: yellow; padding: 3px 6px; border-radius: 5px; display: inline-block;"
+else:
+    # Modalità selezionata: torna allo stile normale e trasparente
+    stile_dinamico = "color: inherit;"
 
 with st.container(border=True):
     col_lbl_mod, col_radio_mod = st.columns([1, 15])
     with col_lbl_mod:
-        st.markdown(f"<div style='margin-top: 4px; color: {colore_etichetta};'><b>Modalità:</b></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='margin-top: 4px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
     with col_radio_mod:
         contesto_selezionato = st.radio(
             "Modalità:",
