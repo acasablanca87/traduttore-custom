@@ -123,6 +123,7 @@ def ping_pong_lingue():
     st.session_state.lang_target = st.session_state.last_detected_lang
     st.session_state.last_detected_lang = temp
     st.session_state.testo_tradotto = ""
+    st.session_state.input_key_counter += 1
 
 def nuova_chat():
     st.session_state.storia_contesto = ""
