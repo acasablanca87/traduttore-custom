@@ -14,7 +14,7 @@ MAPPA_LINGUE = {
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato: ottimizzazione degli spazi in alto e spostamento tasto copia a sinistra
+# CSS aggiornato: ottimizzazione degli spazi in alto, spostamento tasto copia a sinistra e blocco a capo bottoni
 st.markdown("""
     <style>
         /* Ottimizza gli spazi in alto */
@@ -31,6 +31,12 @@ st.markdown("""
         /* Sposta il testo tradotto un po' a destra per non farlo coprire dal tasto */
         div[data-testid="stCodeBlock"] pre {
             padding-left: 3.5rem !important;
+        }
+
+        /* Evita che il testo dei bottoni vada a capo spezzando le parole (es. tasto Inverti) */
+        div[data-testid="stButton"] p {
+            white-space: nowrap !important;
+            font-size: 0.95rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -141,7 +147,7 @@ else:
     stile_dinamico = "color: inherit;"
 
 with st.container(border=True):
-    col_lbl_mod, col_radio_mod = st.columns([1, 15])
+    col_lbl_mod, col_radio_mod = st.columns([2, 8])
     with col_lbl_mod:
         st.markdown(f"<div style='margin-top: 4px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
     with col_radio_mod:
@@ -182,8 +188,8 @@ st.button("🗑️🔄 Svuota Contesto & Inizia Nuova Chat", on_click=nuova_chat
 
 st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
 
-# Layout Colonne Lingue
-col_lang_sx, col_btn_inv, col_lang_dx = st.columns([4, 1, 4])
+# Layout Colonne Lingue aggiornate per gestire i ridimensionamenti
+col_lang_sx, col_btn_inv, col_lang_dx = st.columns([3, 1.5, 3])
 
 with col_lang_sx:
     rilevamento_placeholder = st.empty()
