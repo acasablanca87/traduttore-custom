@@ -147,7 +147,8 @@ else:
     stile_dinamico = "color: inherit;"
 
 with st.container(border=True):
-    col_lbl_mod, col_radio_mod = st.columns([2, 8])
+    # Aggiustato il rapporto per bilanciare visuale intera e a metà schermo
+    col_lbl_mod, col_radio_mod = st.columns([1.2, 10])
     with col_lbl_mod:
         st.markdown(f"<div style='margin-top: 4px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
     with col_radio_mod:
