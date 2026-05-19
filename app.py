@@ -1,326 +1,165 @@
 import streamlit as st
 import google.generativeai as genai
-from langdetect import detect, LangDetectException
 from PIL import Image
-
-# --- Mappa per tradurre i codici di langdetect nei nostri nomi ---
-MAPPA_LINGUE = {
-    'it': 'Italiano', 'fr': 'Francese', 'en': 'Inglese', 'es': 'Spagnolo',
-    'de': 'Tedesco', 'nl': 'Olandese', 'ro': 'Rumeno', 'ru': 'Russo',
-    'be': 'Bielorusso', 'uk': 'Ucraino', 'pl': 'Polacco', 'ar': 'Arabo/Tunisino',
-    'bg': 'Bulgaro', 'cs': 'Ceco', 'sk': 'Slovacco', 'sl': 'Sloveno', 'hu': 'Ungherese'
-}
+from prompts import PROMPT_FIELD, PROMPT_B2B
 
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="wide")
 
-# CSS aggiornato: ottimizzazione degli spazi in alto, spostamento tasto copia a sinistra e blocco a capo bottoni
+# CSS per ottimizzare gli spazi
 st.markdown("""
     <style>
-        /* Ottimizza gli spazi in alto */
-        .block-container {
-            padding-top: 1.8rem !important; 
-        }
-        
-        /* Sposta il tasto copia a sinistra nel riquadro nero */
-        div[data-testid="stCodeBlock"] button {
-            right: auto !important;
-            left: 0.5rem !important;
-        }
-        
-        /* Sposta il testo tradotto un po' a destra per non farlo coprire dal tasto */
-        div[data-testid="stCodeBlock"] pre {
-            padding-left: 3.5rem !important;
-        }
-
-        /* Evita che il testo dei bottoni vada a capo spezzando le parole (es. tasto Inverti) */
-        div[data-testid="stButton"] p {
-            white-space: nowrap !important;
-            font-size: 0.95rem !important;
-        }
+        .block-container { padding-top: 2rem !important; }
+        div[data-testid="stCodeBlock"] button { right: auto !important; left: 0.5rem !important; }
+        div[data-testid="stCodeBlock"] pre { padding-left: 3.5rem !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# Titolo compatto, più piccolo e con firma/credits in inglese
+# 2. SISTEMA DI LOGIN (Security Wall)
+def check_password():
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
+
+    if st.session_state.logged_in:
+        return True
+
+    st.markdown("### 🔒 Accesso Riservato")
+    password = st.text_input("Inserisci la password operativa:", type="password")
+    
+    if st.button("Accedi"):
+        # Leggiamo le password dai secrets di Streamlit
+        pass_admin = st.secrets.get("PASS_ADMIN", "")
+        pass_colleghi = st.secrets.get("PASS_COLLEGHI", "")
+        
+        if password and (password == pass_admin or password == pass_colleghi):
+            st.session_state.logged_in = True
+            st.rerun()
+        else:
+            st.error("❌ Password errata.")
+    return False
+
+# Blocca l'esecuzione se non sei loggato
+if not check_password():
+    st.stop()
+
+# --- APP VERA E PROPRIA INIZIA QUI ---
+
+# Intestazione
 st.markdown(
-    "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI settore Logistica & Trasporti 🚛 "
-    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'> Powered by Google Gemini ✨ | Concept by angelocasablanca • Code by Google Gemini </span></h4>", 
+    "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI Logistica & Trasporti 🚛 "
+    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'>Powered by Gemini</span></h4>", 
     unsafe_allow_html=True
 )
 
-# 2. Configurazione API e Modello
-api_key = st.secrets["GEMINI_API_KEY"]
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-3.1-flash-lite-preview')
+# 3. Configurazione API e Modello
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+model = genai.GenerativeModel('gemini-3.1-flash-lite') # Usiamo lo stesso modello veloce del Bot
 
-# 3. Definizione dei Prompts ORIGINALI COMPLETI
-PROMPT_FIELD = """Ruolo: Agisci come un traduttore esperto in logistica internazionale e trasporti pesanti su gomma, specializzato nella catena del freddo.
-
-Istruzioni Operative:
-• Comando Trigger: Rispondi esclusivamente alle richieste che iniziano con "Traduci in...".
-• Output: Fornisci solo il testo tradotto. Nessun commento, nessuna introduzione.
-• Cifre: Mantieni sempre i numeri in formato numerico.
-
-Gestione Testi Sgrammaticati (MOLTO IMPORTANTE):
-• Il testo originale conterrà spesso errori di battitura, traduzioni automatiche pessime, o grammatica "sgangherata" (es. "seak" invece di "speak").
-• NON TRADURRE MAI LETTERALMENTE le parole scritte male. Deduci sempre l'intenzione reale dell'operatore basandoti sulla logica del trasporto sul piazzale prima di produrre l'output.
-
-Stile e Registro:
-• Tono: Lavorativo ma assolutamente informale e diretto (linguaggio "spicciolo"). Evita termini accademici.
-• Chiarezza: Privilegia la comprensibilità immediata per i conducenti e il magazzino.
-
-Esempi di Stile e Deduzione:
-- Input (Inglese sgrammaticato): "I seak the driver and must make brake now in Brescia he arrive 7 AM in your warehouse"
-- Output (Italiano): "Ho sentito l'autista, deve fare la pausa adesso. Arriva da voi in magazzino a Brescia alle 7:00."
-- Input (Francese approssimativo): "Chauffeur pas frigo marche, viande chaud"
-- Output (Italiano): "L'autista ha il frigo spento, la carne si sta scaldando."
-
-Contesto Specifico:
-• Settore: Trasporto a temperatura controllata e veicoli pesanti.
-• Merci: Carne appesa, ortofrutta, piante su carrelli.
-• Focus Russo/Bielorusso: Tono neutrale e standard. Non assumere la provenienza dell'interlocutore."""
-
-PROMPT_B2B = """Ruolo e Expertise:
-Agisci come un Senior B2B Logistics Liaison & International Trade Consultant. Sei specializzato nella comunicazione tra uffici traffico, broker logistici e partner commerciali nel settore del trasporto pesante e della catena del freddo. 
-
-🌍 Contesto Operativo e Regole:
-• Output: Fornisci solo il testo tradotto, senza introduzioni o commenti.
-• Cifre: Mantieni i numeri in formato numerico.
-• Formato: Se il testo originale è complex, organizzalo per punti se migliora la chiarezza professionale.
-
-Gestione Testi Sgrammaticati e Gergo B2B (MOLTO IMPORTANTE):
-• Spesso riceverai testi in un inglese/francese approssimativo scritto da operatori frettolosi. NON tradurre letteralmente.
-• Deduci il significato e innalza il registro linguistico usando la terminologia standard B2B e documentale (es. usa "CMR" invece di "carte/fogli", "transpallet" invece di "macchina per bancali", "ribalta" invece di "porta").
-
-Esempi di Stile e Deduzione:
-- Input (Inglese sgrammaticato): "We give you papers of load and the machine for pallets is broken."
-- Output (Italiano): "Vi forniamo i CMR allegati. Segnaliamo inoltre che il transpallet è guasto."
-- Input (Francese approssimativo): "Camion est a la porte 4 pour decharger le chaud."
-- Output (Italiano): "Il veicolo è posizionato in ribalta 4 per lo scarico della merce a temperatura positiva."
-- Input (Spagnolo informale): "El chofer dice que falta un pallet de fruta."
-- Output (Italiano): "Il conducente segnala un ammanco di un pallet di ortofrutta rispetto al carico."
-
-🛡️ Vincoli Stilistici:
-• Niente "Gergo da Strada" o colloquialismi. Sostituisci il tono "spicciolo" con verbi d'azione chiari (es. "Confermare", "Autorizzare", "Notificare").
-• Focus Geopolitico: Mantieni una neutralità assoluta e distaccata, specialmente verso le lingue dell'est Europa."""
-
-LINGUE_BASE = [
-    "Italiano", "Francese", "Inglese", "Spagnolo", 
-    "Tedesco", "Olandese", "Rumeno", "Russo", 
-    "Bielorusso", "Ucraino", "Polacco", "Tunisino"
-]
-
-# --- Memoria (Ping-Pong e Contesto) ---
+# 4. Inizializzazione Memoria Sessione
 if "lang_target" not in st.session_state:
-    st.session_state.lang_target = "Francese" 
-if "last_detected_lang" not in st.session_state:
-    st.session_state.last_detected_lang = "Italiano" 
+    st.session_state.lang_target = "Francese"
 if "testo_tradotto" not in st.session_state:
     st.session_state.testo_tradotto = ""
-if "storia_contesto" not in st.session_state:
-    st.session_state.storia_contesto = ""
-if "input_key_counter" not in st.session_state:
-    st.session_state.input_key_counter = 0
-if "modalita_selezionata" not in st.session_state:
-    st.session_state.modalita_selezionata = None
+if "memo_contesto" not in st.session_state:
+    st.session_state.memo_contesto = ""
 
-def ping_pong_lingue():
-    temp = st.session_state.lang_target
-    st.session_state.lang_target = st.session_state.last_detected_lang
-    st.session_state.last_detected_lang = temp
+def pulisci_chat():
     st.session_state.testo_tradotto = ""
-    st.session_state.input_key_counter += 1
+    st.session_state.memo_contesto = ""
 
-def nuova_chat():
-    st.session_state.storia_contesto = ""
-    st.session_state.testo_tradotto = ""
-    st.session_state.input_key_counter += 1
+# 5. UI: Selezione Modalità
+modalita = st.radio(
+    "Modalità di Traduzione:",
+    ("🏢 B2B (Uffici, Broker e Clienti)", "👷‍♂️ FIELD (Autisti e Magazzino)"),
+    horizontal=True
+)
 
-# 4. Interfaccia Utente
+st.divider()
 
-# Layout Inline per la Modalità con stile dinamico (Testo + Sfondo)
-if st.session_state.modalita_selezionata is None:
-    # Modalità NON selezionata: testo rosso, sfondo giallo, margini arrotondati
-    stile_dinamico = "color: #ff4b4b; background-color: yellow; padding: 3px 6px; border-radius: 5px; display: inline-block;"
-else:
-    # Modalità selezionata: torna allo stile normale e trasparente
-    stile_dinamico = "color: inherit;"
-
-with st.container(border=True):
-    # Aggiustato il rapporto per bilanciare visuale intera e a metà schermo
-    col_lbl_mod, col_radio_mod = st.columns([1.2, 10])
-    with col_lbl_mod:
-        st.markdown(f"<div style='margin-top: 4px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
-    with col_radio_mod:
-        contesto_selezionato = st.radio(
-            "Modalità:",
-            ("🏢 B2B (Uffici, Broker e Clienti)", "👷‍♂️ FIELD (Autisti e Magazzino)"),
-            horizontal=True,
-            label_visibility="collapsed",
-            index=None,
-            key="modalita_selezionata"
-        )
-
-st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-
-# Expander Cronologia, Contesto e Immagini
-with st.expander("📜 Cronologia e Contesto (Opzionale)", expanded=False):
-    testo_contesto = st.text_area(
-        "Incolla qui i messaggi precedenti o lascia che si popoli in automatico:", 
-        value=st.session_state.storia_contesto, 
-        height=120
-    )
-    st.session_state.storia_contesto = testo_contesto
+# 6. GESTIONE DEL CONTESTO (Manuale o tramite PDF/Foto)
+with st.expander("📂 Contesto della Spedizione (Opzionale)", expanded=False):
+    st.markdown("Scrivi qui i dettagli del carico o **carica un documento/foto** e lascia che l'IA lo analizzi per te.")
     
-    st.markdown("---")
+    col_upload, col_text = st.columns([1, 2])
     
-    # Caricatore Immagini Drag & Drop
-    immagine_caricata = st.file_uploader(
-        "📎 Allega uno screenshot o una foto per dare contesto all'AI (Drag & Drop oppure Clicca):", 
-        type=["png", "jpg", "jpeg"],
-        key=f"img_uploader_{st.session_state.input_key_counter}"
-    )
-    
-    # Anteprima dell'immagine caricata
-    if immagine_caricata:
-        st.image(immagine_caricata, caption="Anteprima immagine allegata", width=250)
-
-st.button("♻️ Svuota Contesto & Inizia Nuova Chat", on_click=nuova_chat)
-
-st.markdown("<hr style='margin-top: 5px; margin-bottom: 20px;'>", unsafe_allow_html=True)
-
-# Layout Colonne Lingue aggiornate per gestire i ridimensionamenti
-col_lang_sx, col_btn_inv, col_lang_dx = st.columns([3, 1.5, 3])
-
-with col_lang_sx:
-    rilevamento_placeholder = st.empty()
-    rilevamento_placeholder.text_input(
-        "🌐 Rilevamento Automatico:", 
-        value=st.session_state.last_detected_lang, 
-        disabled=True
-    )
-    
-with col_btn_inv:
-    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-    st.button("⇄ Inverti", on_click=ping_pong_lingue, use_container_width=True)
-    
-with col_lang_dx:
-    # --- NUOVA LOGICA: Ordinamento personalizzato + Opzione "Altro..." ---
-    lingue_prioritarie = ["Francese", "Italiano", "Inglese", "Russo", "Rumeno", "Spagnolo"]
-    
-    # Raccogliamo tutte le lingue note ed evitiamo doppioni
-    tutte_le_lingue_note = list(set(LINGUE_BASE + [st.session_state.last_detected_lang]))
-    
-    # Separiamo e ordiniamo alfabeticamente quelle non prioritarie
-    altre_lingue = sorted([l for l in tutte_le_lingue_note if l not in lingue_prioritarie and l != "Altro..."])
-    
-    # Creiamo la lista finale aggiungendo "Altro..." in fondo
-    opzioni_dinamiche = lingue_prioritarie + altre_lingue + ["Altro..."]
-    
-    # Capiamo quale indice mostrare di default nella tendina
-    indice_default = 0
-    if st.session_state.lang_target in opzioni_dinamiche:
-        indice_default = opzioni_dinamiche.index(st.session_state.lang_target)
-    elif st.session_state.lang_target: 
-        # Se la lingua in memoria non è nella lista, significa che l'avevamo scritta a mano prima
-        indice_default = opzioni_dinamiche.index("Altro...")
-        
-    scelta_tendina = st.selectbox("Traduci in:", opzioni_dinamiche, index=indice_default)
-
-    # Se l'utente seleziona "Altro...", mostriamo il campo di testo libero
-    if scelta_tendina == "Altro...":
-        lingua_custom = st.text_input(
-            "Scrivi la lingua:", 
-            value=st.session_state.lang_target if st.session_state.lang_target not in opzioni_dinamiche else "",
-            placeholder="es. Portoghese"
-        )
-        # Aggiorniamo la memoria con quello che l'utente ha scritto
-        st.session_state.lang_target = lingua_custom.strip()
-    else:
-        # Aggiorniamo la memoria con la scelta dalla tendina
-        st.session_state.lang_target = scelta_tendina
-
-# Layout Testi
-col_testo_sx, col_testo_dx = st.columns(2)
-
-with col_testo_sx:
-    # --- Form invisibile per far funzionare il Ctrl+Enter ---
-    with st.form(key=f"form_traduzione_{st.session_state.input_key_counter}", border=False):
-        testo_da_tradurre = st.text_area(
-            "Testo Originale:", 
-            height=250, 
-            label_visibility="collapsed", 
-            placeholder="Incolla qui il testo. La lingua verrà rilevata automaticamente...",
-            key=f"input_{st.session_state.input_key_counter}"
-        )
-        btn_traduci = st.form_submit_button("Traduci", type="primary", use_container_width=True)
-
-with col_testo_dx:
-    risultato_placeholder = st.empty()
-    if st.session_state.testo_tradotto:
-        risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
-
-# 5. Logica di Rilevamento Istantaneo e Traduzione
-if btn_traduci:
-    if not contesto_selezionato:
-        st.error("⚠️ Attenzione: Seleziona prima la Modalità (B2B o FIELD) nel riquadro in alto!")
-    elif testo_da_tradurre.strip():
-        
-        prompt_attivo = PROMPT_B2B if "B2B" in contesto_selezionato else PROMPT_FIELD
-        
-        with st.spinner("Elaborazione e traduzione in corso... ⏳"):
-            
-            # A. RILEVAMENTO LINGUA ISTANTANEO
-            try:
-                codice_lingua = detect(testo_da_tradurre)
-                lingua_rilevata = MAPPA_LINGUE.get(codice_lingua, f"Sconosciuta ({codice_lingua})")
-            except LangDetectException:
-                lingua_rilevata = "Non identificata"
-                
-            st.session_state.last_detected_lang = lingua_rilevata
-
-            # B. PREPARAZIONE DEL COMANDO CON O SENZA CONTESTO
-            lingua_destinazione = st.session_state.lang_target
-            
-            if st.session_state.storia_contesto.strip():
-                comando_puro = f"""[STORICO DELLA CONVERSAZIONE - SOLO PER CONTESTO]:
-{st.session_state.storia_contesto}
-
-[ATTENZIONE - REGOLA TASSATIVA]:
-Usa lo storico qui sopra e l'eventuale immagine fornita ESCLUSIVAMENTE per capire l'argomento e il gergo. NON rispondere e NON continuare la conversazione. 
-Fornisci SOLO ed ESCLUSIVAMENTE la traduzione finale pura, SENZA ripetere la frase "Traduci in...".
-
-[TESTO DA TRADURRE ORA]:
-Traduci in {lingua_destinazione}:
-{testo_da_tradurre}"""
-            else:
-                comando_puro = f"Traduci in {lingua_destinazione}:\n\n{testo_da_tradurre}"
-
-            prompt_completo = f"{prompt_attivo}\n\nInput:\n{comando_puro}"
-            
-            # C. PREPARAZIONE DEL PACCHETTO DATI (Testo + Immagine)
-            payload_gemini = [prompt_completo]
-            
-            if immagine_caricata is not None:
+    with col_upload:
+        file_caricato = st.file_uploader("Carica CMR, Ordine (PDF) o Foto", type=["pdf", "png", "jpg", "jpeg"])
+        if st.button("🧠 Estrai Contesto dal File", use_container_width=True) and file_caricato:
+            with st.spinner("Analisi documento..."):
                 try:
-                    img = Image.open(immagine_caricata)
-                    payload_gemini.append(img)
+                    payload = ["Analizza questo documento logistico e scrivi un riassunto di massimo 2 righe con le informazioni utili per una traduzione (es. merce, destinazione, targa). Restituisci SOLO il riassunto."]
+                    if file_caricato.type == "application/pdf":
+                        payload.append({"mime_type": "application/pdf", "data": file_caricato.getvalue()})
+                    else:
+                        img = Image.open(file_caricato)
+                        payload.append(img)
+                    
+                    response_contesto = model.generate_content(payload)
+                    st.session_state.memo_contesto = response_contesto.text.strip()
+                    st.success("Contesto estratto!")
                 except Exception as e:
-                    st.warning(f"Errore durante l'apertura dell'immagine: {e}")
-            
-            try:
-                # D. CHIAMATA API E AGGIORNAMENTO
-                response = model.generate_content(payload_gemini)
-                st.session_state.testo_tradotto = response.text.strip()
-                
-                # Salviamo il nuovo scambio nella memoria del contesto
-                nuovo_scambio = f"\n[Da {lingua_rilevata}]: {testo_da_tradurre}\n[In {lingua_destinazione}]: {st.session_state.testo_tradotto}\n---"
-                st.session_state.storia_contesto += nuovo_scambio
-                
-                risultato_placeholder.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
-                st.rerun() 
-                
-            except Exception as e:
-                st.error(f"Errore con le API di Gemini: {e}")
+                    st.error(f"Errore analisi: {e}")
+
+    with col_text:
+        st.session_state.memo_contesto = st.text_area(
+            "Note di contesto attuali:", 
+            value=st.session_state.memo_contesto, 
+            height=100
+        )
+
+# 7. LOGICA TRADUZIONE (Ping Pong Integrato)
+col_lingua, col_spazio = st.columns([1, 3])
+with col_lingua:
+    lingue_disponibili = ["Francese", "Inglese", "Tedesco", "Spagnolo", "Rumeno", "Russo", "Polacco", "Ucraino", "Olandese"]
+    st.session_state.lang_target = st.selectbox("Lingua Straniera:", lingue_disponibili, index=lingue_disponibili.index(st.session_state.lang_target))
+
+col_input, col_output = st.columns(2)
+
+with col_input:
+    with st.form(key="form_traduzione", border=False):
+        testo_da_tradurre = st.text_area(
+            "Messaggio da tradurre:", 
+            height=200, 
+            placeholder="Scrivi in italiano per tradurre in lingua straniera.\nScrivi in lingua straniera per tradurre in italiano.\nL'IA capirà da sola."
+        )
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            btn_traduci = st.form_submit_button("Traduci", type="primary", use_container_width=True)
+        with col_btn2:
+            st.form_submit_button("Svuota Traduzione", on_click=pulisci_chat, use_container_width=True)
+
+with col_output:
+    if st.session_state.testo_tradotto:
+        st.markdown("**Risultato:**")
+        st.code(st.session_state.testo_tradotto, language=None, wrap_lines=True)
     else:
-        st.warning("Inserisci del testo da tradurre prima di cliccare su 'Traduci' o usare Ctrl+Enter.")
+        st.info("La traduzione apparirà qui.")
+
+# 8. ESECUZIONE TRADUZIONE
+if btn_traduci and testo_da_tradurre.strip():
+    prompt_attivo = PROMPT_B2B if "B2B" in modalita else PROMPT_FIELD
+    lingua = st.session_state.lang_target
+    
+    # Costruzione logica Ping Pong
+    istruzione_ping_pong = (
+        f"🚨 [REGOLA DI TRADUZIONE OBBLIGATORIA - PING PONG] 🚨\n"
+        f"1. Analizza la lingua dell'[INPUT] fornito qui sotto.\n"
+        f"2. Se l'[INPUT] è in ITALIANO -> TRADUCI IN {lingua.upper()}.\n"
+        f"3. Se l'[INPUT] NON È in ITALIANO -> TRADUCI IN ITALIANO.\n"
+        f"⚠️ Se l'input è brevissimo (es. 'ok', 'yes'), TRADUCILO SEMPRE.\n"
+        f"DIVIETO ASSOLUTO: È severamente vietato rispondere nella stessa lingua dell'input."
+    )
+
+    comando_puro = ""
+    if st.session_state.memo_contesto.strip():
+        comando_puro += f"📌 [CONTESTO DEL TRASPORTO ATTUALE]:\n{st.session_state.memo_contesto}\n\n"
+        
+    comando_puro += f"{istruzione_ping_pong}\n\n[INPUT]:\n{testo_da_tradurre}"
+    
+    with st.spinner("Traduzione in corso... ⏳"):
+        try:
+            response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}")
+            st.session_state.testo_tradotto = response.text.strip()
+            st.rerun() # Ricarica per mostrare il risultato
+        except Exception as e:
+            st.error(f"Errore API Gemini: {e}")
