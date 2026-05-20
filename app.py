@@ -53,14 +53,14 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 if "uploader_key" not in st.session_state:
     st.session_state.uploader_key = 0 # Chiave per forzare lo svuotamento dell'allegato
-if "modalita_selezionata" not in st.session_state:
-    st.session_state.modalita_selezionata = None
+if "modalita_radio" not in st.session_state:
+    st.session_state.modalita_radio = None
 
 def pulisci_chat():
     st.session_state.chat_history = []
     st.session_state.memo_contesto = ""
     st.session_state.uploader_key += 1 # Cambia la chiave, distrugge l'allegato precedente
-    st.session_state.modalita_selezionata = None # Resetta anche la modalità
+    st.session_state.modalita_radio = None # Resetta anche la modalità, facendola tornare gialla
 
 # Intestazione e Controlli
 st.markdown(
@@ -73,7 +73,7 @@ col_mod_label, col_mod_radio, col_lang, col_btn = st.columns([1, 1.5, 2, 2])
 
 # Logica per l'evidenziatore giallo della Modalità
 with col_mod_label:
-    if st.session_state.modalita_selezionata is None:
+    if st.session_state.modalita_radio is None:
         stile_dinamico = "background-color: yellow; color: black; padding: 4px 8px; border-radius: 5px;"
     else:
         stile_dinamico = "color: inherit; padding: 4px 0px;"
@@ -81,13 +81,14 @@ with col_mod_label:
     st.markdown(f"<div style='margin-top: 5px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
 
 with col_mod_radio:
-    # Salviamo la scelta della radio button nello state
-    st.session_state.modalita_selezionata = st.radio(
+    # Colleghiamo direttamente la radio alla session_state usando la "key"
+    st.radio(
         "Modalità:", 
         ("🏢 B2B", "👷‍♂️ FIELD"), 
         horizontal=True, 
         label_visibility="collapsed",
-        index=None if st.session_state.modalita_selezionata is None else ("🏢 B2B", "👷‍♂️ FIELD").index(st.session_state.modalita_selezionata)
+        index=None,
+        key="modalita_radio"
     )
 
 with col_lang:
@@ -156,11 +157,15 @@ st.divider()
 for messaggio in st.session_state.chat_history:
     avatar_icon = "👤" if messaggio["role"] == "user" else "🤖"
     with st.chat_message(messaggio["role"], avatar=avatar_icon):
-        st.write(messaggio["content"])
+        if messaggio["role"] == "assistant":
+            # Usiamo st.code per il bot: mostra il riquadro col pulsante "Copia" integrato!
+            st.code(messaggio["content"], language=None, wrap_lines=True)
+        else:
+            st.write(messaggio["content"])
 
 # 7. INPUT UTENTE E CHIAMATA API (In basso nello schermo)
 # Disabilitiamo l'input se la modalità non è stata scelta
-chat_disabilitata = st.session_state.modalita_selezionata is None
+chat_disabilitata = st.session_state.modalita_radio is None
 placeholder_testo = "Seleziona prima la Modalità (B2B o FIELD) in alto!" if chat_disabilitata else "Scrivi il messaggio da tradurre..."
 
 user_input = st.chat_input(placeholder_testo, disabled=chat_disabilitata)
@@ -171,7 +176,7 @@ if user_input:
     with st.chat_message("user", avatar="👤"):
         st.write(user_input)
         
-    prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_selezionata else PROMPT_FIELD
+    prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_radio else PROMPT_FIELD
     
     # Costruzione logica Ping Pong
     istruzione_ping_pong = (
@@ -206,10 +211,11 @@ if user_input:
             try:
                 response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}")
                 traduzione = response.text.strip()
-                st.write(traduzione)
+                
+                # Stampa con st.code per avere il pulsante Copia
+                st.code(traduzione, language=None, wrap_lines=True)
                 
                 # Salva la risposta nello storico
                 st.session_state.chat_history.append({"role": "assistant", "content": traduzione})
-                st.rerun() # Forza il riavvio grafico pulito
             except Exception as e:
                 st.error(f"Errore API Gemini: {e}")
