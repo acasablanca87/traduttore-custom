@@ -65,7 +65,7 @@ def pulisci_chat():
 # Intestazione e Controlli
 st.markdown(
     "<h4 style='margin-bottom: 0.5rem;'>Traduttore AI Logistica & Trasporti 🚛 "
-    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'>Powered by Gemini ✨ Concept by angelocasablanca • Vibe Code by Gemini</span></h4>", 
+    "<span style='font-size: 0.5em; font-weight: normal; color: #888;'>Powered by Gemini ✨ Concept by angelocasablanca</span></h4>", 
     unsafe_allow_html=True
 )
 
