@@ -51,10 +51,16 @@ if "memo_contesto" not in st.session_state:
     st.session_state.memo_contesto = ""
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0 # Chiave per forzare lo svuotamento dell'allegato
+if "modalita_selezionata" not in st.session_state:
+    st.session_state.modalita_selezionata = None
 
 def pulisci_chat():
     st.session_state.chat_history = []
     st.session_state.memo_contesto = ""
+    st.session_state.uploader_key += 1 # Cambia la chiave, distrugge l'allegato precedente
+    st.session_state.modalita_selezionata = None # Resetta anche la modalità
 
 # Intestazione e Controlli
 st.markdown(
@@ -63,23 +69,63 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-col_mod, col_lang, col_btn = st.columns([2, 2, 1.5])
-with col_mod:
-    modalita = st.radio("Modalità:", ("🏢 B2B", "👷‍♂️ FIELD"), horizontal=True, label_visibility="collapsed")
+col_mod_label, col_mod_radio, col_lang, col_btn = st.columns([1, 1.5, 2, 2])
+
+# Logica per l'evidenziatore giallo della Modalità
+with col_mod_label:
+    if st.session_state.modalita_selezionata is None:
+        stile_dinamico = "background-color: yellow; color: black; padding: 4px 8px; border-radius: 5px;"
+    else:
+        stile_dinamico = "color: inherit; padding: 4px 0px;"
+        
+    st.markdown(f"<div style='margin-top: 5px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
+
+with col_mod_radio:
+    # Salviamo la scelta della radio button nello state
+    st.session_state.modalita_selezionata = st.radio(
+        "Modalità:", 
+        ("🏢 B2B", "👷‍♂️ FIELD"), 
+        horizontal=True, 
+        label_visibility="collapsed",
+        index=None if st.session_state.modalita_selezionata is None else ("🏢 B2B", "👷‍♂️ FIELD").index(st.session_state.modalita_selezionata)
+    )
+
 with col_lang:
-    lingue_disponibili = ["Francese", "Inglese", "Tedesco", "Spagnolo", "Rumeno", "Russo", "Polacco", "Ucraino", "Olandese"]
-    st.session_state.lang_target = st.selectbox("Lingua Straniera:", lingue_disponibili, index=lingue_disponibili.index(st.session_state.lang_target), label_visibility="collapsed")
+    lingue_disponibili = ["Francese", "Inglese", "Tedesco", "Spagnolo", "Rumeno", "Russo", "Polacco", "Ucraino", "Olandese", "Altro..."]
+    
+    # Capiamo cosa mostrare nel menu a tendina
+    index_tendina = 0
+    if st.session_state.lang_target in lingue_disponibili:
+        index_tendina = lingue_disponibili.index(st.session_state.lang_target)
+    else:
+        index_tendina = lingue_disponibili.index("Altro...")
+        
+    scelta_lingua = st.selectbox("Lingua Straniera:", lingue_disponibili, index=index_tendina, label_visibility="collapsed")
+
 with col_btn:
-    st.button("🗑️ Svuota Chat", on_click=pulisci_chat, use_container_width=True)
+    st.button("♻️ Svuota chat e contesto", on_click=pulisci_chat, use_container_width=True)
+
+# Se l'utente seleziona "Altro...", mostriamo il campo di testo per scrivere a mano
+lingua_finale = st.session_state.lang_target
+if scelta_lingua == "Altro...":
+    lingua_custom = st.text_input("Scrivi la lingua desiderata (es. Portoghese):", value="" if st.session_state.lang_target in lingue_disponibili else st.session_state.lang_target)
+    if lingua_custom:
+        lingua_finale = lingua_custom.strip()
+        st.session_state.lang_target = lingua_finale
+else:
+    lingua_finale = scelta_lingua
+    st.session_state.lang_target = lingua_finale
 
 # 5. GESTIONE DEL CONTESTO (Manuale o tramite PDF/Foto)
-with st.expander("📂 Contesto della Spedizione (CMR o Note)", expanded=False):
+with st.expander("📝 Contesto", expanded=False):
     st.markdown("Scrivi dettagli sul carico o **carica un documento/foto** e lascia che l'IA estragga i dati chiave per migliorare la traduzione.")
     
     col_upload, col_text = st.columns([1, 2])
     with col_upload:
-        file_caricato = st.file_uploader("Carica CMR (PDF) o Foto", type=["pdf", "png", "jpg", "jpeg"], label_visibility="collapsed")
-        if st.button("🧠 Estrai Contesto", use_container_width=True) and file_caricato:
+        # Usiamo la chiave dinamica per poter resettare questo componente
+        file_caricato = st.file_uploader("Carica CMR (PDF) o Foto", type=["pdf", "png", "jpg", "jpeg"], label_visibility="collapsed", key=f"uploader_{st.session_state.uploader_key}")
+        
+        if st.button("🧠 Estrai contesto dagli allegati", use_container_width=True) and file_caricato:
             with st.spinner("Analisi documento in corso..."):
                 try:
                     payload = ["Analizza questo documento logistico e scrivi un riassunto di massimo 2 righe con le informazioni utili per una traduzione (es. merce, destinazione, targa). Restituisci SOLO il riassunto, senza preamboli."]
@@ -113,7 +159,11 @@ for messaggio in st.session_state.chat_history:
         st.write(messaggio["content"])
 
 # 7. INPUT UTENTE E CHIAMATA API (In basso nello schermo)
-user_input = st.chat_input("Scrivi il messaggio da tradurre (In italiano o lingua straniera)...")
+# Disabilitiamo l'input se la modalità non è stata scelta
+chat_disabilitata = st.session_state.modalita_selezionata is None
+placeholder_testo = "Seleziona prima la Modalità (B2B o FIELD) in alto!" if chat_disabilitata else "Scrivi il messaggio da tradurre..."
+
+user_input = st.chat_input(placeholder_testo, disabled=chat_disabilitata)
 
 if user_input:
     # Mostra immediatamente il messaggio dell'utente
@@ -121,21 +171,19 @@ if user_input:
     with st.chat_message("user", avatar="👤"):
         st.write(user_input)
         
-    prompt_attivo = PROMPT_B2B if "B2B" in modalita else PROMPT_FIELD
-    lingua = st.session_state.lang_target
+    prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_selezionata else PROMPT_FIELD
     
     # Costruzione logica Ping Pong
     istruzione_ping_pong = (
         f"🚨 [REGOLA DI TRADUZIONE OBBLIGATORIA - PING PONG] 🚨\n"
         f"1. Analizza la lingua dell'[INPUT] fornito qui sotto.\n"
-        f"2. Se l'[INPUT] è in ITALIANO -> TRADUCI IN {lingua.upper()}.\n"
+        f"2. Se l'[INPUT] è in ITALIANO -> TRADUCI IN {lingua_finale.upper()}.\n"
         f"3. Se l'[INPUT] NON È in ITALIANO -> TRADUCI IN ITALIANO.\n"
         f"⚠️ DIVIETO ASSOLUTO: È severamente vietato rispondere nella stessa lingua dell'input."
     )
 
     # Costruzione dello storico per Gemini
     testo_storia = ""
-    # Prendiamo gli ultimi 8 messaggi scambiati per dare memoria senza esaurire i token
     for m in st.session_state.chat_history[-9:-1]: 
         ruolo = "Originale" if m["role"] == "user" else "Traduzione"
         testo_storia += f"{ruolo}: {m['content']}\n"
@@ -162,5 +210,6 @@ if user_input:
                 
                 # Salva la risposta nello storico
                 st.session_state.chat_history.append({"role": "assistant", "content": traduzione})
+                st.rerun() # Forza il riavvio grafico pulito
             except Exception as e:
                 st.error(f"Errore API Gemini: {e}")
