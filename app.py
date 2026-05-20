@@ -153,7 +153,7 @@ with st.expander("📝 Contesto", expanded=False):
             value=st.session_state.memo_contesto, 
             height=100,
             label_visibility="collapsed",
-            placeholder="Es. Camion frigo diretto a Milano, scarico ritardato."
+            placeholder="Es. Camion frigo diretto a Parigi, scarico previsto in anticipo."
         )
 
 st.divider()
