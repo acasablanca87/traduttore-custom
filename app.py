@@ -72,9 +72,9 @@ st.markdown(
 # --- Expander Istruzioni Rapide ---
 with st.expander("ℹ️ Istruzioni rapide", expanded=False):
     st.markdown("""
-    - **Modalità B2B/FIELD (obbligatoria):** prima di iniziare, devi scegliere il tono. *B2B* per comunicazioni formali (uffici, broker, clienti), *FIELD* per un linguaggio diretto e senza fronzoli (autisti, piazzale)
-    - **Traduzione "Ping-Pong":** seleziona 1 sola volta a sessione la lingua di traduzione. Se scrivi in italiano, il sistema traduce in lingua straniera. Se scrivi in lingua straniera, traduce in italiano. Capisce da solo!
-    - **L'Italiano come "pilastro":** per evitare confusioni, l'italiano è la base fissa. Qualsiasi cosa tu scriva in lingua straniera, verrà sempre e solo tradotta verso l'italiano
+    - **1. Modalità B2B/FIELD (Obbligatoria):** Prima di iniziare, devi scegliere il tono. *B2B* per comunicazioni formali (uffici, broker, clienti), *FIELD* per un linguaggio diretto e senza fronzoli (autisti, piazzale).
+    - **2. Traduzione "Ping-Pong":** Dimentica i tasti "Traduci da/verso". Se scrivi in italiano, il sistema traduce in lingua straniera. Se scrivi in lingua straniera, traduce in italiano. Capisce da solo!
+    - **3. L'Italiano come "Pilastro":** Per evitare confusioni in ufficio, l'italiano è la base fissa. Qualsiasi cosa tu scriva in lingua straniera, verrà sempre e solo tradotta verso l'italiano.
     """)
 
 col_mod_label, col_mod_radio, col_lang, col_btn = st.columns([1, 1.5, 2, 2])
