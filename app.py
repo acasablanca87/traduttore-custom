@@ -81,7 +81,6 @@ with col_mod_label:
     st.markdown(f"<div style='margin-top: 5px; {stile_dinamico}'><b>Modalità:</b></div>", unsafe_allow_html=True)
 
 with col_mod_radio:
-    # Colleghiamo direttamente la radio alla session_state usando la "key"
     st.radio(
         "Modalità:", 
         ("🏢 B2B", "👷‍♂️ FIELD"), 
@@ -158,13 +157,22 @@ for messaggio in st.session_state.chat_history:
     avatar_icon = "👤" if messaggio["role"] == "user" else "🤖"
     with st.chat_message(messaggio["role"], avatar=avatar_icon):
         if messaggio["role"] == "assistant":
-            # Usiamo st.code per il bot: mostra il riquadro col pulsante "Copia" integrato!
             st.code(messaggio["content"], language=None, wrap_lines=True)
         else:
             st.write(messaggio["content"])
 
+# 6.5. MOSTRA IL CONTATORE DELLA MEMORIA (Discreto, senza emoji, prima dell'input)
+numero_messaggi = len(st.session_state.chat_history)
+if numero_messaggi > 0:
+    # Mostriamo quanti messaggi ci sono in memoria, fermandoci al massimo di 8
+    msg_in_memoria = min(numero_messaggi, 8)
+    st.markdown(
+        f"<div style='text-align: center; color: #888; font-size: 0.75rem; margin-top: 10px;'>"
+        f"Memoria conversazione attiva (ultimi {msg_in_memoria} messaggi)</div>", 
+        unsafe_allow_html=True
+    )
+
 # 7. INPUT UTENTE E CHIAMATA API (In basso nello schermo)
-# Disabilitiamo l'input se la modalità non è stata scelta
 chat_disabilitata = st.session_state.modalita_radio is None
 placeholder_testo = "Seleziona prima la Modalità (B2B o FIELD) in alto!" if chat_disabilitata else "Scrivi il messaggio da tradurre..."
 
@@ -189,6 +197,7 @@ if user_input:
 
     # Costruzione dello storico per Gemini
     testo_storia = ""
+    # Prendiamo gli ultimi 8 messaggi (-9:-1 esclude l'ultimissimo che è l'input attuale, prendendo gli 8 precedenti)
     for m in st.session_state.chat_history[-9:-1]: 
         ruolo = "Originale" if m["role"] == "user" else "Traduzione"
         testo_storia += f"{ruolo}: {m['content']}\n"
@@ -212,10 +221,9 @@ if user_input:
                 response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}")
                 traduzione = response.text.strip()
                 
-                # Stampa con st.code per avere il pulsante Copia
                 st.code(traduzione, language=None, wrap_lines=True)
                 
-                # Salva la risposta nello storico
                 st.session_state.chat_history.append({"role": "assistant", "content": traduzione})
+                st.rerun() # Forza il riavvio grafico pulito
             except Exception as e:
                 st.error(f"Errore API Gemini: {e}")
