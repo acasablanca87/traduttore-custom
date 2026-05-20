@@ -69,6 +69,14 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# --- NUOVO: Expander Istruzioni Rapide ---
+with st.expander("ℹ️ Istruzioni rapide", expanded=False):
+    st.markdown("""
+    - **1. Modalità B2B/FIELD (Obbligatoria):** Prima di iniziare, devi scegliere il tono. *B2B* per comunicazioni formali (uffici, broker, clienti), *FIELD* per un linguaggio diretto e senza fronzoli (autisti, piazzale).
+    - **2. Traduzione "Ping-Pong":** Dimentica i tasti "Traduci da/verso". Se scrivi in italiano, il sistema traduce in lingua straniera. Se scrivi in lingua straniera, traduce in italiano. Capisce da solo!
+    - **3. L'Italiano come "Pilastro":** Per evitare confusioni in ufficio, l'italiano è la base fissa. Qualsiasi cosa tu scriva in lingua straniera, verrà sempre e solo tradotta verso l'italiano.
+    """)
+
 col_mod_label, col_mod_radio, col_lang, col_btn = st.columns([1, 1.5, 2, 2])
 
 # Logica per l'evidenziatore giallo della Modalità
@@ -154,17 +162,17 @@ st.divider()
 
 # 6. MOSTRA LO STORICO DELLA CHAT
 for messaggio in st.session_state.chat_history:
-    avatar_icon = "👤" if messaggio["role"] == "user" else "🤖"
+    # --- NUOVO: Avatar minimalisti ---
+    avatar_icon = "💬" if messaggio["role"] == "user" else "✨"
     with st.chat_message(messaggio["role"], avatar=avatar_icon):
         if messaggio["role"] == "assistant":
             st.code(messaggio["content"], language=None, wrap_lines=True)
         else:
             st.write(messaggio["content"])
 
-# 6.5. MOSTRA IL CONTATORE DELLA MEMORIA (Discreto, senza emoji, prima dell'input)
+# 6.5. MOSTRA IL CONTATORE DELLA MEMORIA
 numero_messaggi = len(st.session_state.chat_history)
 if numero_messaggi > 0:
-    # Mostriamo quanti messaggi ci sono in memoria, fermandoci al massimo di 8
     msg_in_memoria = min(numero_messaggi, 8)
     st.markdown(
         f"<div style='text-align: center; color: #888; font-size: 0.75rem; margin-top: 10px;'>"
@@ -181,7 +189,8 @@ user_input = st.chat_input(placeholder_testo, disabled=chat_disabilitata)
 if user_input:
     # Mostra immediatamente il messaggio dell'utente
     st.session_state.chat_history.append({"role": "user", "content": user_input})
-    with st.chat_message("user", avatar="👤"):
+    # --- NUOVO: Avatar minimalista (Input Utente) ---
+    with st.chat_message("user", avatar="💬"):
         st.write(user_input)
         
     prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_radio else PROMPT_FIELD
@@ -197,7 +206,6 @@ if user_input:
 
     # Costruzione dello storico per Gemini
     testo_storia = ""
-    # Prendiamo gli ultimi 8 messaggi (-9:-1 esclude l'ultimissimo che è l'input attuale, prendendo gli 8 precedenti)
     for m in st.session_state.chat_history[-9:-1]: 
         ruolo = "Originale" if m["role"] == "user" else "Traduzione"
         testo_storia += f"{ruolo}: {m['content']}\n"
@@ -215,7 +223,8 @@ if user_input:
     comando_puro += f"{istruzione_ping_pong}\n\n[INPUT]:\n{user_input}"
     
     # Esegue la traduzione
-    with st.chat_message("assistant", avatar="🤖"):
+    # --- NUOVO: Avatar minimalista (Output AI) ---
+    with st.chat_message("assistant", avatar="✨"):
         with st.spinner("Traduzione..."):
             try:
                 response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}")
