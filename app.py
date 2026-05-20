@@ -125,7 +125,7 @@ else:
 
 # 5. GESTIONE DEL CONTESTO (Manuale o tramite PDF/Foto)
 with st.expander("📝 Contesto", expanded=False):
-    st.markdown("Scrivi dettagli sul carico o **carica un documento/foto** e lascia che l'IA estragga i dati chiave per migliorare la traduzione.")
+    st.markdown("Scrivi dettagli o **carica un documento/foto** e lascia che l'IA estragga i dati chiave di contesto per migliorare la traduzione")
     
     col_upload, col_text = st.columns([1, 2])
     with col_upload:
