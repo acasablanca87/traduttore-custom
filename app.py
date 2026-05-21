@@ -191,14 +191,14 @@ if user_input:
         
     prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_radio else PROMPT_FIELD
     
-# Costruzione logica Ping Pong POTENZIATA
+# Costruzione logica Ping Pong (Gabbia di formattazione)
     istruzione_ping_pong = (
-        f"🚨 [REGOLA DI TRADUZIONE OBBLIGATORIA - PING PONG] 🚨\n"
+        f"🚨 [REGOLA DI TRADUZIONE E FORMATTAZIONE - PING PONG] 🚨\n"
         f"1. Analizza la lingua dell'[INPUT] fornito qui sotto.\n"
         f"2. Se l'[INPUT] è in ITALIANO -> TRADUCI IN {lingua_finale.upper()}.\n"
-        f"3. Se l'[INPUT] NON È in ITALIANO (es. Cirillico, Francese, ecc.) -> TRADUCI IN ITALIANO.\n"
-        f"⚠️ REGOLA SALVAVITA PER TESTI BREVI: Anche se l'input è brevissimo (es. 1 o 2 parole come 'Решение офиса' o 'Выгрузка'), DEVI TRADURLO in Italiano. L'eccezione di non tradurre i nomi propri/sigle NON si applica a frasi comuni o parole in cirillico.\n"
-        f"⛔ DIVIETO ASSOLUTO: È severamente vietato restituire il testo originale copiato. Devi SEMPRE cambiare lingua."
+        f"3. Se l'[INPUT] NON È in ITALIANO (es. Cirillico, ecc.) -> TRADUCI IN ITALIANO.\n"
+        f"⚠️ REGOLA PER TESTI BREVI: Anche se l'input è di sole 1 o 2 parole, TRADUCILO SEMPRE.\n"
+        f"⛔ DIVIETO DI RIPETIZIONE: Fornisci SOLO ed ESCLUSIVAMENTE la traduzione. È severamente vietato ricopiare o affiancare il testo originale nell'output. (Esempio Sbagliato: 'Решение - Decisione'. Esempio Giusto: 'Decisione')."
     )
 
     # Costruzione dello storico per Gemini
