@@ -44,6 +44,12 @@ if not check_password():
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 model = genai.GenerativeModel('gemini-3.1-flash-lite')
 
+# --- FIX AUDIT: Aggiunta configurazione Temperatura ---
+# Rende il modello preciso, logico e meno propenso a "svisare" dalle regole
+configurazione_bilanciata = genai.types.GenerationConfig(
+    temperature=0.3
+)
+
 # 4. Inizializzazione Memoria Sessione
 if "lang_target" not in st.session_state:
     st.session_state.lang_target = "Francese"
@@ -59,8 +65,8 @@ if "modalita_radio" not in st.session_state:
 def pulisci_chat():
     st.session_state.chat_history = []
     st.session_state.memo_contesto = ""
-    st.session_state.uploader_key += 1 # Cambia la chiave, distrugge l'allegato precedente
-    st.session_state.modalita_radio = None # Resetta anche la modalità, facendola tornare gialla
+    st.session_state.uploader_key += 1 
+    st.session_state.modalita_radio = None 
 
 # Intestazione e Controlli
 st.markdown(
@@ -72,8 +78,9 @@ st.markdown(
 # --- Expander Istruzioni Rapide ---
 with st.expander("ℹ️ Istruzioni rapide", expanded=False):
     st.markdown("""
-    - **Modalità B2B/FIELD (obbligatoria):** prima di iniziare, devi scegliere il tono. *B2B* per comunicazioni formali (uffici, broker, clienti), *FIELD* per un linguaggio diretto e senza fronzoli (autisti, piazzale)
+    - **Modalità B2B/FIELD (obbligatoria):** prima di iniziare, devi scegliere il tono. *B2B* per comunicazioni formali (uffici, broker, clienti), *FIELD* per un linguaggio diretto e senza fronzoli (autisti, piazzale).
     - **Traduzione "Ping-Pong":** seleziona 1 sola volta a sessione la lingua di traduzione. Se scrivi in italiano, il sistema traduce in lingua straniera. Se scrivi in lingua straniera, traduce in italiano. Capisce da solo!
+    - **L'Italiano come "pilastro":** per evitare confusioni, l'italiano è la base fissa. Qualsiasi cosa tu scriva in lingua straniera, verrà sempre e solo tradotta verso l'italiano.
     """)
 
 col_mod_label, col_mod_radio, col_lang, col_btn = st.columns([1, 1.5, 2, 2])
@@ -100,7 +107,6 @@ with col_mod_radio:
 with col_lang:
     lingue_disponibili = ["Francese", "Inglese", "Tedesco", "Spagnolo", "Rumeno", "Russo", "Polacco", "Ucraino", "Olandese", "Altro..."]
     
-    # Capiamo cosa mostrare nel menu a tendina
     index_tendina = 0
     if st.session_state.lang_target in lingue_disponibili:
         index_tendina = lingue_disponibili.index(st.session_state.lang_target)
@@ -112,7 +118,7 @@ with col_lang:
 with col_btn:
     st.button("♻️ Svuota chat e contesto", on_click=pulisci_chat, use_container_width=True)
 
-# Se l'utente seleziona "Altro...", mostriamo il campo di testo per scrivere a mano
+# Gestione opzione "Altro..."
 lingua_finale = st.session_state.lang_target
 if scelta_lingua == "Altro...":
     lingua_custom = st.text_input("Scrivi la lingua desiderata (es. Portoghese):", value="" if st.session_state.lang_target in lingue_disponibili else st.session_state.lang_target)
@@ -125,7 +131,7 @@ else:
 
 # 5. GESTIONE DEL CONTESTO (Manuale o tramite PDF/Foto)
 with st.expander("📝 Contesto", expanded=False):
-    st.markdown("Aggiungi testo o **carica un documento/foto** e lascia che l'IA estragga gli elementi di contesto per migliorare la traduzione")
+    st.markdown("Aggiungi testo o **carica un documento/foto** e lascia che l'IA estragga gli elementi di contesto per migliorare la traduzione.")
     
     col_upload, col_text = st.columns([1, 2])
     with col_upload:
@@ -134,14 +140,14 @@ with st.expander("📝 Contesto", expanded=False):
         if st.button("🧠 Estrai contesto dagli allegati", use_container_width=True) and file_caricato:
             with st.spinner("Analisi documento in corso..."):
                 try:
-                    payload = ["Analizza questo documento logistico e scrivi un riassunto di massimo 2 righe con le informazioni utili per una traduzione (es. merce, destinazione, targa). Restituisci SOLO il riassunto, senza preamboli."]
+                    payload = ["Analizza questo documento logistico e scrivi un riassunto di massimo 2 righe con le informazioni utili per definire il contesto (es. merce, destinazione, targa). Restituisci SOLO il riassunto, senza preamboli."]
                     if file_caricato.type == "application/pdf":
                         payload.append({"mime_type": "application/pdf", "data": file_caricato.getvalue()})
                     else:
                         img = Image.open(file_caricato)
                         payload.append(img)
                     
-                    response_contesto = model.generate_content(payload)
+                    response_contesto = model.generate_content(payload, generation_config=configurazione_bilanciata)
                     st.session_state.memo_contesto = response_contesto.text.strip()
                     st.success("Contesto aggiornato!")
                 except Exception as e:
@@ -177,9 +183,9 @@ if numero_messaggi > 0:
         unsafe_allow_html=True
     )
 
-# 7. INPUT UTENTE E CHIAMATA API (In basso nello schermo)
+# 7. INPUT UTENTE E CHIAMATA API
 chat_disabilitata = st.session_state.modalita_radio is None
-placeholder_testo = "Seleziona prima la Modalità (B2B o FIELD) in alto!" if chat_disabilitata else "Scrivi il messaggio da tradurre..."
+placeholder_testo = "Seleziona prima la Modalità in alto!" if chat_disabilitata else "Scrivi il messaggio da tradurre..."
 
 user_input = st.chat_input(placeholder_testo, disabled=chat_disabilitata)
 
@@ -191,14 +197,15 @@ if user_input:
         
     prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_radio else PROMPT_FIELD
     
-# Costruzione logica Ping Pong (Gabbia di formattazione)
+    # --- FIX AUDIT: La Gabbia d'Ancoraggio (Il Segreto di Telegram) ---
     istruzione_ping_pong = (
-        f"🚨 [REGOLA DI TRADUZIONE E FORMATTAZIONE - PING PONG] 🚨\n"
-        f"1. Analizza la lingua dell'[INPUT] fornito qui sotto.\n"
-        f"2. Se l'[INPUT] è in ITALIANO -> TRADUCI IN {lingua_finale.upper()}.\n"
-        f"3. Se l'[INPUT] NON È in ITALIANO (es. Cirillico, ecc.) -> TRADUCI IN ITALIANO.\n"
-        f"⚠️ REGOLA PER TESTI BREVI: Anche se l'input è di sole 1 o 2 parole, TRADUCILO SEMPRE.\n"
-        f"⛔ DIVIETO DI RIPETIZIONE: Fornisci SOLO ed ESCLUSIVAMENTE la traduzione. È severamente vietato ricopiare o affiancare il testo originale nell'output. (Esempio Sbagliato: 'Решение - Decisione'. Esempio Giusto: 'Decisione')."
+        f"🚨 [REGOLA DI TRADUZIONE E ANCORAGGIO - LEGGERE ATTENTAMENTE] 🚨\n"
+        f"Fai da interprete bidirezionale tra due sole lingue: l'ITALIANO e il {lingua_finale.upper()}.\n"
+        f"1. Se l'[INPUT DA TRADURRE] è in ITALIANO -> TRADUCI IN: {lingua_finale.upper()}.\n"
+        f"2. Se l'[INPUT DA TRADURRE] NON è in italiano -> TRADUCI IN: ITALIANO.\n"
+        f"🎯 REGOLA DI FORMATTAZIONE (FONDAMENTALE): Devi INIZIARE SEMPRE il tuo output con il codice ISO di 2 lettere della lingua in cui hai tradotto, racchiuso tra parentesi quadre. Esempio se traduci in italiano: '[it] Ciao'. Esempio se traduci in francese: '[fr] Bonjour'. Esempio se traduci in russo: '[ru] Привет'.\n"
+        f"⛔ DIVIETO DI PROOFREADING E RIPETIZIONE: Fornisci SOLO il tag e la traduzione finale. Non correggere il testo nella stessa lingua. Non ricopiare il testo originale.\n"
+        f"⚠️ Testi brevi (es. 1-2 parole in cirillico o acronimi): VANNO SEMPRE TRADOTTI, non lasciarli inalterati."
     )
 
     # Costruzione dello storico per Gemini
@@ -221,14 +228,24 @@ if user_input:
     
     # Esegue la traduzione
     with st.chat_message("assistant", avatar="✨"):
-        with st.spinner("Traduzione..."):
+        with st.spinner("Traduzione in corso..."):
             try:
-                response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}")
-                traduzione = response.text.strip()
+                # Applichiamo la configurazione_bilanciata anche qui!
+                response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}", generation_config=configurazione_bilanciata)
+                testo_tradotto_raw = response.text.strip()
                 
-                st.code(traduzione, language=None, wrap_lines=True)
+                # --- RIMOZIONE INVISIBILE DELL'ANCORA (Tag) ---
+                testo_pulito = testo_tradotto_raw
+                # Se inizia con una quadra e si chiude entro i primi 6 caratteri (es. [it] o [fra])
+                if testo_tradotto_raw.startswith('[') and ']' in testo_tradotto_raw[:6]:
+                    fine_tag = testo_tradotto_raw.find(']')
+                    testo_pulito = testo_tradotto_raw[fine_tag+1:].strip()
+                # -----------------------------------------------
+
+                st.code(testo_pulito, language=None, wrap_lines=True)
                 
-                st.session_state.chat_history.append({"role": "assistant", "content": traduzione})
-                st.rerun() # Forza il riavvio grafico pulito
+                # Salviamo la versione pulita (senza tag) nella memoria visiva
+                st.session_state.chat_history.append({"role": "assistant", "content": testo_pulito})
+                st.rerun() 
             except Exception as e:
                 st.error(f"Errore API Gemini: {e}")
