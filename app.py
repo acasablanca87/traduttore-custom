@@ -1,4 +1,7 @@
 import streamlit as st
+import extra_streamlit_components as stx
+import jwt
+import datetime
 from google import genai
 from google.genai import types
 from PIL import Image
@@ -14,14 +17,33 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 2. SISTEMA DI LOGIN (Security Wall)
+# 2. SISTEMA DI LOGIN (Security Wall & JWT Token)
+cookie_manager = stx.CookieManager(key="cookie_manager")
+
 def check_password():
+    # 1. Bypass immediato se la sessione è già attiva in memoria
     if "logged_in" not in st.session_state:
         st.session_state.logged_in = False
 
     if st.session_state.logged_in:
         return True
 
+    # 2. Controlla il Cookie se la sessione in memoria è vuota (es. dopo F5 o giorni)
+    token = cookie_manager.get(cookie="auth_token")
+    if token:
+        try:
+            # Usa PASS_ADMIN come chiave crittografica per decodificare il token
+            chiave_segreta = st.secrets.get("PASS_ADMIN", "chiave_di_sicurezza_fallback")
+            payload = jwt.decode(token, chiave_segreta, algorithms=["HS256"])
+            
+            if payload.get("logged_in"):
+                st.session_state.logged_in = True
+                st.rerun() # Ricrea il thread con lo stato loggato
+        except Exception:
+            # Se il token è scaduto (oltre 15 gg) o manomesso, lo eliminiamo silenziosamente
+            cookie_manager.delete("auth_token")
+
+    # 3. Interfaccia di Login se nessun token valido è presente
     st.markdown("### 🔒 Accesso Riservato")
     password = st.text_input("Inserisci la password operativa:", type="password")
     
@@ -31,6 +53,15 @@ def check_password():
         
         if password and (password == pass_admin or password == pass_colleghi):
             st.session_state.logged_in = True
+            
+            # Generazione del Token JWT crittografato (Scadenza: 15 giorni)
+            chiave_segreta = pass_admin if pass_admin else "chiave_di_sicurezza_fallback"
+            scadenza = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=15)
+            nuovo_token = jwt.encode({"logged_in": True, "exp": scadenza}, chiave_segreta, algorithm="HS256")
+            
+            # Salvataggio nel browser tramite Cookie
+            cookie_manager.set("auth_token", nuovo_token, expires_at=scadenza)
+            
             st.rerun()
         else:
             st.error("❌ Password errata.")
