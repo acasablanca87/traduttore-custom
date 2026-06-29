@@ -1,7 +1,8 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from PIL import Image
-from prompts import PROMPT_FIELD, PROMPT_B2B
+from prompts import PROMPT_FIELD, PROMPT_B2B, PROMPT_CONTEXT_EXTRACTOR
 
 # 1. Configurazione della pagina
 st.set_page_config(page_title="Traduttore Logistico AI", page_icon="🚛", layout="centered")
@@ -40,13 +41,13 @@ if not check_password():
 
 # --- APP VERA E PROPRIA INIZIA QUI ---
 
-# 3. Configurazione API e Modello
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-model = genai.GenerativeModel('gemini-3.1-flash-lite')
+# 3. Configurazione API e Modello (SDK Moderno google-genai)
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+MODELLO_IN_USO = 'gemini-3.1-flash-lite'
 
 # --- FIX AUDIT: Aggiunta configurazione Temperatura ---
 # Rende il modello preciso, logico e meno propenso a "svisare" dalle regole
-configurazione_bilanciata = genai.types.GenerationConfig(
+config_bilanciata = types.GenerateContentConfig(
     temperature=0.3
 )
 
@@ -140,14 +141,22 @@ with st.expander("📝 Contesto", expanded=False):
         if st.button("🧠 Estrai contesto dagli allegati", use_container_width=True) and file_caricato:
             with st.spinner("Analisi documento in corso..."):
                 try:
-                    payload = ["Analizza questo documento logistico e scrivi un riassunto di massimo 2 righe con le informazioni utili per definire il contesto (es. merce, destinazione, targa). Restituisci SOLO il riassunto, senza preamboli."]
+                    payload = [PROMPT_CONTEXT_EXTRACTOR]
+                    
                     if file_caricato.type == "application/pdf":
-                        payload.append({"mime_type": "application/pdf", "data": file_caricato.getvalue()})
+                        payload.append(types.Part.from_bytes(
+                            data=file_caricato.getvalue(), 
+                            mime_type="application/pdf"
+                        ))
                     else:
                         img = Image.open(file_caricato)
                         payload.append(img)
                     
-                    response_contesto = model.generate_content(payload, generation_config=configurazione_bilanciata)
+                    response_contesto = client.models.generate_content(
+                        model=MODELLO_IN_USO,
+                        contents=payload, 
+                        config=config_bilanciata
+                    )
                     st.session_state.memo_contesto = response_contesto.text.strip()
                     st.success("Contesto aggiornato!")
                 except Exception as e:
@@ -197,46 +206,45 @@ if user_input:
         
     prompt_attivo = PROMPT_B2B if "B2B" in st.session_state.modalita_radio else PROMPT_FIELD
     
-    # --- FIX AUDIT: La Gabbia d'Ancoraggio (Il Segreto di Telegram) ---
-    istruzione_ping_pong = (
-        f"🚨 [REGOLA DI TRADUZIONE E ANCORAGGIO - LEGGERE ATTENTAMENTE] 🚨\n"
-        f"Fai da interprete bidirezionale tra due sole lingue: l'ITALIANO e il {lingua_finale.upper()}.\n"
-        f"1. Se l'[INPUT DA TRADURRE] è in ITALIANO -> TRADUCI IN: {lingua_finale.upper()}.\n"
-        f"2. Se l'[INPUT DA TRADURRE] NON è in italiano -> TRADUCI IN: ITALIANO.\n"
-        f"🎯 REGOLA DI FORMATTAZIONE (FONDAMENTALE): Devi INIZIARE SEMPRE il tuo output con il codice ISO di 2 lettere della lingua in cui hai tradotto, racchiuso tra parentesi quadre. Esempio se traduci in italiano: '[it] Ciao'. Esempio se traduci in francese: '[fr] Bonjour'. Esempio se traduci in russo: '[ru] Привет'.\n"
-        f"⛔ DIVIETO DI PROOFREADING E RIPETIZIONE: Fornisci SOLO il tag e la traduzione finale. Non correggere il testo nella stessa lingua. Non ricopiare il testo originale.\n"
-        f"⚠️ Testi brevi (es. 1-2 parole in cirillico o acronimi): VANNO SEMPRE TRADOTTI, non lasciarli inalterati."
-    )
-
-    # Costruzione dello storico per Gemini
+    
+# Costruzione dello storico per Gemini
     testo_storia = ""
     for m in st.session_state.chat_history[-9:-1]: 
-        ruolo = "Originale" if m["role"] == "user" else "Traduzione"
+        ruolo = "In" if m["role"] == "user" else "Out"
         testo_storia += f"{ruolo}: {m['content']}\n"
 
     comando_puro = ""
     if st.session_state.memo_contesto.strip():
-        comando_puro += f"📌 [CONTESTO DEL TRASPORTO ATTUALE]:\n{st.session_state.memo_contesto}\n\n"
+        comando_puro += f"📌 [MEMO DIRETTIVE]:\n{st.session_state.memo_contesto}\n\n"
         
     if testo_storia:
         comando_puro += (
-            f"🕒 [STORICO RECENTE DELLA CONVERSAZIONE]:\n{testo_storia}\n"
-            f"⚠️ Usa lo storico solo per capire il contesto o a cosa si riferisce l'utente.\n\n"
+            f"[STORIA RECENTE (Analizza per dedurre pronomi e soggetti)]:\n{testo_storia}\n"
         )
         
-    comando_puro += f"{istruzione_ping_pong}\n\n[INPUT DA TRADURRE]:\n{user_input}"
+    # --- FIX AUDIT: Sincronizzazione Regola Ping-Pong identica al Bot Telegram ---
+    comando_puro += (
+        f"🚨 [REGOLA PING PONG] 🚨\nSe INPUT è in ITALIANO -> TRADUCI IN {lingua_finale.upper()}.\n"
+        f"Se INPUT NON È ITALIANO -> TRADUCI IN ITALIANO.\n"
+        f"Inizia SEMPRE con il codice ISO tra parentesi quadre, es: [fr] Bonjour, [it] Ciao.\n\n"
+        f"[INPUT]:\n{user_input}"
+    )
     
-    # Esegue la traduzione
+    # Esegue la traduzione con il nuovo SDK
     with st.chat_message("assistant", avatar="✨"):
         with st.spinner("Traduzione in corso..."):
             try:
-                # Applichiamo la configurazione_bilanciata anche qui!
-                response = model.generate_content(f"{prompt_attivo}\n\n{comando_puro}", generation_config=configurazione_bilanciata)
+                payload_gemini = f"{prompt_attivo}\n\n{comando_puro}"
+                
+                response = client.models.generate_content(
+                    model=MODELLO_IN_USO,
+                    contents=payload_gemini,
+                    config=config_bilanciata
+                )
                 testo_tradotto_raw = response.text.strip()
                 
-                # --- RIMOZIONE INVISIBILE DELL'ANCORA (Tag) ---
+                # --- RIMOZIONE INVISIBILE DELL'ANCORA (Tag ISO) ---
                 testo_pulito = testo_tradotto_raw
-                # Se inizia con una quadra e si chiude entro i primi 6 caratteri (es. [it] o [fra])
                 if testo_tradotto_raw.startswith('[') and ']' in testo_tradotto_raw[:6]:
                     fine_tag = testo_tradotto_raw.find(']')
                     testo_pulito = testo_tradotto_raw[fine_tag+1:].strip()
@@ -244,7 +252,7 @@ if user_input:
 
                 st.code(testo_pulito, language=None, wrap_lines=True)
                 
-                # Salviamo la versione pulita (senza tag) nella memoria visiva
+                # Salviamo la versione pulita nella memoria visiva
                 st.session_state.chat_history.append({"role": "assistant", "content": testo_pulito})
                 st.rerun() 
             except Exception as e:
