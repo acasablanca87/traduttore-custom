@@ -36,7 +36,7 @@ def check_password():
                 st.session_state.logged_in = True
                 return True
         except Exception:
-            # Token manomesso o scaduto (oltre 15 gg): lo cancelliamo dall'URL
+            # Token manomesso o scaduto (oltre 15 ore): lo cancelliamo dall'URL
             if "t" in st.query_params:
                 del st.query_params["t"]
 
@@ -52,7 +52,7 @@ def check_password():
             st.session_state.logged_in = True
             
             # Generazione del Token JWT crittografato (Scadenza: 15 giorni)
-            scadenza = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=15)
+            scadenza = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=15)
             nuovo_token = jwt.encode({"logged_in": True, "exp": scadenza}, chiave_segreta, algorithm="HS256")
             
             # Inserisce il token nell'URL in modo pulito e sicuro per resistere all'F5
